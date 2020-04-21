@@ -47,7 +47,7 @@
 #include "stat-tool.h"
 #include "traffic_breakdown.h"
 #include "visualizer.h"
-
+#include "../abstract_hardware_model.h"
 #define PRIORITIZE_MSHR_OVER_WB 1
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -79,7 +79,7 @@ shader_core_ctx::shader_core_ctx(class gpgpu_sim *gpu,
                                  unsigned shader_id, unsigned tpc_id,
                                  const shader_core_config *config,
                                  const memory_config *mem_config,
-                                 shader_core_stats *stats)
+                                 shader_core_stats *stats,load_monitor *lm)
     : core_t(gpu, NULL, config->warp_size, config->n_thread_per_shader),
       m_barriers(this, config->max_warps_per_shader, config->max_cta_per_core,
                  config->max_barriers_per_cta, config->warp_size),
@@ -388,7 +388,7 @@ shader_core_ctx::shader_core_ctx(class gpgpu_sim *gpu,
 
   m_ldst_unit =
       new ldst_unit(m_icnt, m_mem_fetch_allocator, this, &m_operand_collector,
-                    m_scoreboard, config, mem_config, stats, shader_id, tpc_id);
+                    m_scoreboard, config, mem_config, stats, shader_id, tpc_id,lm);
   m_fu.push_back(m_ldst_unit);
   m_dispatch_port.push_back(ID_OC_MEM);
   m_issue_port.push_back(OC_EX_MEM);
@@ -1785,6 +1785,7 @@ void ldst_unit::L1_latency_queue_cycle() {
       mem_fetch *mf_next = l1_latency_queue[j][0];
       std::list<cache_event> events;
       enum cache_request_status status =
+          //raghav
           m_L1D->access(mf_next->get_addr(), mf_next,
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
@@ -1810,6 +1811,7 @@ void ldst_unit::L1_latency_queue_cycle() {
                 m_scoreboard->releaseRegister(mf_next->get_inst().warp_id(),
                                               mf_next->get_inst().out[r]);
                 m_core->warp_inst_complete(mf_next->get_inst());
+                m_lm->insert(mf_next->get_pc(),true);
               }
             }
         }
@@ -2150,7 +2152,7 @@ void ldst_unit::init(mem_fetch_interface *icnt,
                      shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
                      Scoreboard *scoreboard, const shader_core_config *config,
                      const memory_config *mem_config, shader_core_stats *stats,
-                     unsigned sid, unsigned tpc) {
+                     unsigned sid, unsigned tpc,load_monitor *lm) {
   m_memory_config = mem_config;
   m_icnt = icnt;
   m_mf_allocator = mf_allocator;
@@ -2160,6 +2162,7 @@ void ldst_unit::init(mem_fetch_interface *icnt,
   m_stats = stats;
   m_sid = sid;
   m_tpc = tpc;
+  m_lm=lm;
 #define STRSIZE 1024
   char L1T_name[STRSIZE];
   char L1C_name[STRSIZE];
@@ -2186,12 +2189,12 @@ ldst_unit::ldst_unit(mem_fetch_interface *icnt,
                      shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
                      Scoreboard *scoreboard, const shader_core_config *config,
                      const memory_config *mem_config, shader_core_stats *stats,
-                     unsigned sid, unsigned tpc)
+                     unsigned sid, unsigned tpc,load_monitor *lm)
     : pipelined_simd_unit(NULL, config, config->smem_latency, core),
       m_next_wb(config) {
   assert(config->smem_latency > 1);
   init(icnt, mf_allocator, core, operand_collector, scoreboard, config,
-       mem_config, stats, sid, tpc);
+       mem_config, stats, sid, tpc,lm);
   if (!m_config->m_L1D_config.disabled()) {
     char L1D_name[STRSIZE];
     snprintf(L1D_name, STRSIZE, "L1D_%03d", m_sid);
@@ -2209,18 +2212,18 @@ ldst_unit::ldst_unit(mem_fetch_interface *icnt,
   m_name = "MEM ";
 }
 
-ldst_unit::ldst_unit(mem_fetch_interface *icnt,
-                     shader_core_mem_fetch_allocator *mf_allocator,
-                     shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
-                     Scoreboard *scoreboard, const shader_core_config *config,
-                     const memory_config *mem_config, shader_core_stats *stats,
-                     unsigned sid, unsigned tpc, l1_cache *new_l1d_cache)
-    : pipelined_simd_unit(NULL, config, 3, core),
-      m_L1D(new_l1d_cache),
-      m_next_wb(config) {
-  init(icnt, mf_allocator, core, operand_collector, scoreboard, config,
-       mem_config, stats, sid, tpc);
-}
+// ldst_unit::ldst_unit(mem_fetch_interface *icnt,
+//                      shader_core_mem_fetch_allocator *mf_allocator,
+//                      shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
+//                      Scoreboard *scoreboard, const shader_core_config *config,
+//                      const memory_config *mem_config, shader_core_stats *stats,
+//                      unsigned sid, unsigned tpc, l1_cache *new_l1d_cache)
+//     : pipelined_simd_unit(NULL, config, 3, core),
+//       m_L1D(new_l1d_cache),
+//       m_next_wb(config) {
+//   init(icnt, mf_allocator, core, operand_collector, scoreboard, config,
+//        mem_config, stats, sid, tpc);
+// }
 
 void ldst_unit::issue(register_set &reg_set) {
   warp_inst_t *inst = *(reg_set.get_ready());
@@ -2627,6 +2630,7 @@ void gpgpu_sim::shader_print_cache_stats(FILE *fout) const {
     }
     fprintf(fout, "\tL1I_total_cache_accesses = %llu\n", total_css.accesses);
     fprintf(fout, "\tL1I_total_cache_misses = %llu\n", total_css.misses);
+    fprintf(fout, "\tL1I_total_hits in load monitor = %llu\n",m_load_monitor->get_total_hits());
     if (total_css.accesses > 0) {
       fprintf(fout, "\tL1I_total_cache_miss_rate = %.4lf\n",
               (double)total_css.misses / (double)total_css.accesses);
@@ -3913,7 +3917,7 @@ simt_core_cluster::simt_core_cluster(class gpgpu_sim *gpu, unsigned cluster_id,
                                      const shader_core_config *config,
                                      const memory_config *mem_config,
                                      shader_core_stats *stats,
-                                     class memory_stats_t *mstats) {
+                                     class memory_stats_t *mstats,load_monitor *lm) {
   m_config = config;
   m_cta_issue_next_core = m_config->n_simt_cores_per_cluster -
                           1;  // this causes first launch to use hw cta 0
@@ -3925,7 +3929,7 @@ simt_core_cluster::simt_core_cluster(class gpgpu_sim *gpu, unsigned cluster_id,
   for (unsigned i = 0; i < config->n_simt_cores_per_cluster; i++) {
     unsigned sid = m_config->cid_to_sid(i, m_cluster_id);
     m_core[i] = new shader_core_ctx(gpu, this, sid, m_cluster_id, config,
-                                    mem_config, stats);
+                                    mem_config, stats,lm);
     m_core_sim_order.push_back(i);
   }
 }

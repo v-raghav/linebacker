@@ -578,7 +578,9 @@ class gpgpu_sim : public gpgpu_t {
   void gpgpu_debug();
 
   ///// data /////
-
+  //raghav
+  class load_monitor *m_load_monitor;
+  
   class simt_core_cluster **m_cluster;
   class memory_partition_unit **m_memory_partition_unit;
   class memory_sub_partition **m_memory_sub_partition;
