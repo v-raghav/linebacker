@@ -72,6 +72,7 @@ enum AdaptiveCache { FIXED = 0, VOLTA = 1 };
 #include <stdio.h>
 #include <string.h>
 #include <set>
+#include<vector>
 
 typedef unsigned long long new_addr_type;
 typedef unsigned long long cudaTextureObject_t;
@@ -1362,6 +1363,59 @@ class register_set {
   const char *m_name;
 };
 
+//raghav
+#define LOAD_MONITOR_ENTRIES 32
+struct load_monitor_entry {
+
+  address_type PC;
+  unsigned hit_count;
+  unsigned miss_count;
+  std::bitset<2> valid; // 2-bit valid
+  
+};
+class load_monitor{
+  public:
+
+   std::vector<load_monitor_entry> m_lm_entry;
+
+   load_monitor() {
+      m_lm_entry.reserve(100);
+      init({0,0,0,0b00});
+    }
+
+   address_type get_hpc(address_type pc) {
+      return pc & 0x1F;
+    }
+
+   void init(load_monitor_entry entry_value) {
+      for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) 
+         m_lm_entry[i]=entry_value;  
+    }
+
+   void insert(address_type pc, bool hit) {
+      address_type hashed_pc= get_hpc(pc);
+      if(!m_lm_entry[hashed_pc].PC)
+        m_lm_entry[hashed_pc].PC = pc;
+      if(hit)
+        m_lm_entry[hashed_pc].hit_count++;
+      else
+         m_lm_entry[hashed_pc].miss_count++;
+    }
+
+    unsigned get_total_hits() {
+      unsigned count=0;
+      for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++)
+        count+=m_lm_entry[i].hit_count;
+      return count;
+    }
+    
+   struct load_monitor_entry get_entry(address_type pc){
+      unsigned hashed_pc=get_hpc(pc);
+      return m_lm_entry[hashed_pc];
+    }
+
+
+};
 #endif  // #ifdef __cplusplus
 
 #endif  // #ifndef ABSTRACT_HARDWARE_MODEL_INCLUDED

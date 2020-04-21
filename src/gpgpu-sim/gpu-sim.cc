@@ -803,11 +803,13 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
   partiton_replys_in_parallel = 0;
   partiton_replys_in_parallel_total = 0;
 
+   //raghav
+  m_load_monitor=new load_monitor;
   m_cluster = new simt_core_cluster *[m_shader_config->n_simt_clusters];
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
     m_cluster[i] =
         new simt_core_cluster(this, i, m_shader_config, m_memory_config,
-                              m_shader_stats, m_memory_stats);
+                              m_shader_stats, m_memory_stats,m_load_monitor);
 
   m_memory_partition_unit =
       new memory_partition_unit *[m_memory_config->m_n_mem];

@@ -1215,7 +1215,7 @@ class simt_core_cluster;
 class shader_memory_interface;
 class shader_core_mem_fetch_allocator;
 class cache_t;
-
+//raghav
 class ldst_unit : public pipelined_simd_unit {
  public:
   ldst_unit(mem_fetch_interface *icnt,
@@ -1223,7 +1223,7 @@ class ldst_unit : public pipelined_simd_unit {
             shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
             Scoreboard *scoreboard, const shader_core_config *config,
             const memory_config *mem_config, class shader_core_stats *stats,
-            unsigned sid, unsigned tpc);
+            unsigned sid, unsigned tpc,load_monitor *lm);
 
   // modifiers
   virtual void issue(register_set &inst);
@@ -1269,7 +1269,7 @@ class ldst_unit : public pipelined_simd_unit {
   void get_L1D_sub_stats(struct cache_sub_stats &css) const;
   void get_L1C_sub_stats(struct cache_sub_stats &css) const;
   void get_L1T_sub_stats(struct cache_sub_stats &css) const;
-
+//raghav
  protected:
   ldst_unit(mem_fetch_interface *icnt,
             shader_core_mem_fetch_allocator *mf_allocator,
@@ -1282,7 +1282,7 @@ class ldst_unit : public pipelined_simd_unit {
             shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
             Scoreboard *scoreboard, const shader_core_config *config,
             const memory_config *mem_config, shader_core_stats *stats,
-            unsigned sid, unsigned tpc);
+            unsigned sid, unsigned tpc,load_monitor *lm);
 
  protected:
   bool shared_cycle(warp_inst_t &inst, mem_stage_stall_type &rc_fail,
@@ -1309,7 +1309,7 @@ class ldst_unit : public pipelined_simd_unit {
   class shader_core_ctx *m_core;
   unsigned m_sid;
   unsigned m_tpc;
-
+  class load_monitor *m_lm;
   tex_cache *m_L1T;        // texture cache
   read_only_cache *m_L1C;  // constant cache
   l1_cache *m_L1D;         // data cache
@@ -1809,7 +1809,7 @@ class shader_core_ctx : public core_t {
   shader_core_ctx(class gpgpu_sim *gpu, class simt_core_cluster *cluster,
                   unsigned shader_id, unsigned tpc_id,
                   const shader_core_config *config,
-                  const memory_config *mem_config, shader_core_stats *stats);
+                  const memory_config *mem_config, shader_core_stats *stats,load_monitor *lm);
 
   // used by simt_core_cluster:
   // modifiers
@@ -2175,7 +2175,7 @@ class simt_core_cluster {
   simt_core_cluster(class gpgpu_sim *gpu, unsigned cluster_id,
                     const shader_core_config *config,
                     const memory_config *mem_config, shader_core_stats *stats,
-                    memory_stats_t *mstats);
+                    memory_stats_t *mstats,load_monitor *lm);
 
   void core_cycle();
   void icnt_cycle();
