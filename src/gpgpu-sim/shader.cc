@@ -1812,7 +1812,6 @@ void ldst_unit::L1_latency_queue_cycle() {
                 m_scoreboard->releaseRegister(mf_next->get_inst().warp_id(),
                                               mf_next->get_inst().out[r]);
                 m_core->warp_inst_complete(mf_next->get_inst());
-                m_lm->insert(mf_next->get_pc(),true);
               }
             }
         }
@@ -1838,7 +1837,10 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
       }
+      if(status ==HIT || status == HIT_RESERVED)
+         m_lm->insert(mf_next->get_pc(),true);
     }
+     
 
     for (unsigned stage = 0; stage < m_config->m_L1D_config.l1_latency - 1;
          ++stage)
