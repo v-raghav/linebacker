@@ -1791,7 +1791,7 @@ void ldst_unit::L1_latency_queue_cycle() {
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
                         events);
-      m_lm->insert(mf_next->get_pc(),true);
+     
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
 
@@ -1812,7 +1812,7 @@ void ldst_unit::L1_latency_queue_cycle() {
                 m_scoreboard->releaseRegister(mf_next->get_inst().warp_id(),
                                               mf_next->get_inst().out[r]);
                 m_core->warp_inst_complete(mf_next->get_inst());
-                //m_lm->insert(mf_next->get_pc(),true);
+                m_lm->insert(mf_next->get_pc(),true);
               }
             }
         }
