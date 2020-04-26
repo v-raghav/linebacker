@@ -52,6 +52,7 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
+unsigned flag = 0;
 mem_fetch *shader_core_mem_fetch_allocator::alloc(
     new_addr_type addr, mem_access_type type, unsigned size, bool wr,
     unsigned long long cycle) const {
@@ -388,7 +389,7 @@ shader_core_ctx::shader_core_ctx(class gpgpu_sim *gpu,
 
   m_ldst_unit =
       new ldst_unit(m_icnt, m_mem_fetch_allocator, this, &m_operand_collector,
-                    m_scoreboard, config, mem_config, stats, shader_id, tpc_id,lm);
+                    m_scoreboard, config, mem_config, stats, shader_id, tpc_id, lm, m_vtt);
   m_fu.push_back(m_ldst_unit);
   m_dispatch_port.push_back(ID_OC_MEM);
   m_issue_port.push_back(OC_EX_MEM);
@@ -1785,12 +1786,17 @@ void ldst_unit::L1_latency_queue_cycle() {
       mem_fetch *mf_next = l1_latency_queue[j][0];
       std::list<cache_event> events;
       enum cache_request_status status =
-          //raghav
           m_L1D->access(mf_next->get_addr(), mf_next,
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
                         events);
-
+          //saumya
+          
+          //unsigned vtt_tag = m_vtt->get_tag(mf_next->get_addr());
+          if(flag == 0)
+            printf("Mem_addr = %x,VTT TAG = %x\n",mf_next->get_addr(), m_vtt->get_tag(mf_next->get_addr()));
+          flag ++;
+          
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
 
@@ -1812,6 +1818,7 @@ void ldst_unit::L1_latency_queue_cycle() {
                                               mf_next->get_inst().out[r]);
                 m_core->warp_inst_complete(mf_next->get_inst());
                 m_lm->insert(mf_next->get_pc(),true);
+                
               }
             }
         }
@@ -1904,7 +1911,7 @@ bool ldst_unit::memory_cycle(warp_inst_t &inst,
     unsigned control_size =
         inst.is_store() ? WRITE_PACKET_SIZE : READ_PACKET_SIZE;
     unsigned size = access.get_size() + control_size;
-    // printf("Interconnect:Addr: %x, size=%d\n",access.get_addr(),size);
+     printf("Interconnect:Addr: %x, size=%d\n",access.get_addr(),control_size);
     if (m_icnt->full(size, inst.is_store() || inst.isatomic())) {
       stall_cond = ICNT_RC_FAIL;
     } else {
@@ -2152,7 +2159,7 @@ void ldst_unit::init(mem_fetch_interface *icnt,
                      shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
                      Scoreboard *scoreboard, const shader_core_config *config,
                      const memory_config *mem_config, shader_core_stats *stats,
-                     unsigned sid, unsigned tpc,load_monitor *lm) {
+                     unsigned sid, unsigned tpc, load_monitor *lm, victim_tag_table *vtt) {
   m_memory_config = mem_config;
   m_icnt = icnt;
   m_mf_allocator = mf_allocator;
@@ -2162,7 +2169,8 @@ void ldst_unit::init(mem_fetch_interface *icnt,
   m_stats = stats;
   m_sid = sid;
   m_tpc = tpc;
-  m_lm=lm;
+  m_lm= lm;
+  m_vtt = vtt;
 #define STRSIZE 1024
   char L1T_name[STRSIZE];
   char L1C_name[STRSIZE];
@@ -2189,12 +2197,12 @@ ldst_unit::ldst_unit(mem_fetch_interface *icnt,
                      shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
                      Scoreboard *scoreboard, const shader_core_config *config,
                      const memory_config *mem_config, shader_core_stats *stats,
-                     unsigned sid, unsigned tpc,load_monitor *lm)
+                     unsigned sid, unsigned tpc,load_monitor *lm, victim_tag_table *vtt)
     : pipelined_simd_unit(NULL, config, config->smem_latency, core),
       m_next_wb(config) {
   assert(config->smem_latency > 1);
   init(icnt, mf_allocator, core, operand_collector, scoreboard, config,
-       mem_config, stats, sid, tpc,lm);
+       mem_config, stats, sid, tpc,lm, vtt);
   if (!m_config->m_L1D_config.disabled()) {
     char L1D_name[STRSIZE];
     snprintf(L1D_name, STRSIZE, "L1D_%03d", m_sid);
@@ -2558,7 +2566,7 @@ void shader_core_ctx::register_cta_thread_exit(unsigned cta_num,
 }
 
 void gpgpu_sim::shader_print_runtime_stat(FILE *fout) {
-  /*
+/*  
  fprintf(fout, "SHD_INSN: ");
  for (unsigned i=0;i<m_n_shader;i++)
     fprintf(fout, "%u ",m_sc[i]->get_num_sim_insn());
@@ -2628,6 +2636,7 @@ void gpgpu_sim::shader_print_cache_stats(FILE *fout) const {
       m_cluster[i]->get_L1I_sub_stats(css);
       total_css += css;
     }
+    
     fprintf(fout, "\tL1I_total_cache_accesses = %llu\n", total_css.accesses);
     fprintf(fout, "\tL1I_total_cache_misses = %llu\n", total_css.misses);
     fprintf(fout, "\tL1I_total_hits in load monitor = %llu\n",m_load_monitor->get_total_hits());

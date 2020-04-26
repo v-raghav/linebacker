@@ -48,6 +48,7 @@
 #include "../abstract_hardware_model.h"
 #include "delayqueue.h"
 #include "dram.h"
+#include "gpu-misc.h"
 #include "gpu-cache.h"
 #include "mem_fetch.h"
 #include "scoreboard.h"
@@ -1215,6 +1216,7 @@ class simt_core_cluster;
 class shader_memory_interface;
 class shader_core_mem_fetch_allocator;
 class cache_t;
+class victim_tag_table;
 //raghav
 class ldst_unit : public pipelined_simd_unit {
  public:
@@ -1223,7 +1225,7 @@ class ldst_unit : public pipelined_simd_unit {
             shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
             Scoreboard *scoreboard, const shader_core_config *config,
             const memory_config *mem_config, class shader_core_stats *stats,
-            unsigned sid, unsigned tpc,load_monitor *lm);
+            unsigned sid, unsigned tpc, load_monitor *lm, victim_tag_table *vtt);
 
   // modifiers
   virtual void issue(register_set &inst);
@@ -1282,7 +1284,7 @@ class ldst_unit : public pipelined_simd_unit {
             shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
             Scoreboard *scoreboard, const shader_core_config *config,
             const memory_config *mem_config, shader_core_stats *stats,
-            unsigned sid, unsigned tpc,load_monitor *lm);
+            unsigned sid, unsigned tpc,load_monitor *lm, victim_tag_table *vtt);
 
  protected:
   bool shared_cycle(warp_inst_t &inst, mem_stage_stall_type &rc_fail,
@@ -1313,6 +1315,7 @@ class ldst_unit : public pipelined_simd_unit {
   tex_cache *m_L1T;        // texture cache
   read_only_cache *m_L1C;  // constant cache
   l1_cache *m_L1D;         // data cache
+  class victim_tag_table *m_vtt; //victim tag table
   std::map<unsigned /*warp_id*/,
            std::map<unsigned /*regnum*/, unsigned /*count*/>>
       m_pending_writes;
@@ -2140,6 +2143,8 @@ class shader_core_ctx : public core_t {
   std::vector<pipeline_stage_name_t> m_issue_port;
   std::vector<simd_function_unit *>
       m_fu;  // stallable pipelines should be last in this array
+  //saumya
+  victim_tag_table *m_vtt;
   ldst_unit *m_ldst_unit;
   static const unsigned MAX_ALU_LATENCY = 512;
   unsigned num_result_bus;
@@ -2270,6 +2275,78 @@ class perfect_memory_interface : public mem_fetch_interface {
   shader_core_ctx *m_core;
   simt_core_cluster *m_cluster;
 };
+
+#define N_VP 4 //number of VTT partitions
+#define WAYS 4 //4 way associative
+#define SETS 48 //number of sets
+#define BLOCK_SIZE 128 //
+
+struct tag_arr
+{
+  address_type tag;
+  std::bitset<1> valid;
+   
+};
+
+class victim_tag_table 
+{
+  public:
+  std::vector<std::vector<tag_arr>> m_vtt_entry; //( SETS ), vector<tag_arr> (WAYS)) ; 
+  unsigned m_bo_bits;
+  unsigned m_idx_bits;
+  //std::cout<< "constructing victim tag table" << endl;
+  //printf("constructing victim tag table");
+  victim_tag_table() {
+      m_bo_bits = LOGB2(BLOCK_SIZE); 
+      m_idx_bits = LOGB2(SETS);
+      m_vtt_entry.reserve(SETS);
+      for(unsigned set = 0; set < SETS; set++)
+        m_vtt_entry[set].resize(WAYS);
+      init({0,0b0});
+  }
+  void init(tag_arr init_value){
+    for(unsigned set = 0; set < SETS; set++)
+    {
+      for(unsigned way = 0; way < WAYS; way++)
+        m_vtt_entry[set][way] = init_value;
+    }
+  }
+  address_type get_way(address_type index)
+  {
+    srand(time(0)); 
+    return (rand() % 4);
+  }
+  address_type get_tag(address_type addr){
+    return (addr >> (m_bo_bits + m_idx_bits));
+  }
+  address_type get_index(address_type addr){
+    return (addr >> m_bo_bits) & (SETS-1);
+  }
+  void fill(address_type addr){
+    unsigned set_index = get_index(addr);
+    address_type tag = get_tag(addr);
+    unsigned way = get_way(set_index);
+    m_vtt_entry[set_index][way].valid = 1;
+    m_vtt_entry[set_index][way].tag = tag;
+    //update_lru(set_index);
+
+  }
+  bool tag_check(address_type addr){
+    bool hit = 0;
+    unsigned set_index = get_index(addr);
+    address_type tag = get_tag(addr);
+    for (unsigned way = 0; way < WAYS; way++) 
+    {
+      if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
+      {
+        hit = 1;
+        break;
+      }
+    }     
+    return hit;
+  }
+};
+
 
 inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
 
