@@ -2271,6 +2271,76 @@ class perfect_memory_interface : public mem_fetch_interface {
   simt_core_cluster *m_cluster;
 };
 
+
 inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
 
+#define N_VP 4 //number of VTT partitions
+#define WAYS 4 //4 way associative
+#define SETS 48 //number of sets
+#define BLOCK_SIZE 128 //
+
+struct tag_arr
+{
+  address_type tag;
+  std::bitset<1> valid;
+   
+};
+
+class victim_tag_table 
+{
+  public:
+  std::vector<std::vector<tag_arr>> m_vtt_entry; //( SETS ), vector<tag_arr> (WAYS)) ; 
+  unsigned m_bo_bits;
+  unsigned m_idx_bits;
+  
+  victim_tag_table() {
+      m_bo_bits = LOGB2(BLOCK_SIZE); 
+      m_idx_bits = LOGB2(SETS);
+      m_vtt_entry.reserve(SETS);
+      for(unsigned set = 0; set < SETS; set++)
+        m_vtt_entry[set].resize(WAYS);
+      init({0,0b0});
+  }
+  void init(tag_arr init_value){
+    for(unsigned set = 0; set < SETS; set++)
+    {
+      for(unsigned way = 0; way < WAYS; way++)
+        m_vtt_entry[set][way] = init_value;
+    }
+  }
+  address_type get_way(address_type index)
+  {
+    srand(time(0)); 
+    return (rand() % 4);
+  }
+  address_type get_tag(address_type addr){
+    return (addr >> (m_bo_bits + m_idx_bits));
+  }
+  address_type get_index(address_type addr){
+    return (addr >> m_bo_bits) & (SETS-1);
+  }
+  void fill(address_type addr){
+    unsigned set_index = get_index(addr);
+    address_type tag = get_tag(addr);
+    unsigned way = get_way(set_index);
+    m_vtt_entry[set_index][way].valid = 1;
+    m_vtt_entry[set_index][way].tag = tag;
+    //update_lru(set_index);
+
+  }
+  bool tag_check(address_type addr){
+    bool hit = 0;
+    unsigned set_index = get_index(addr);
+    address_type tag = get_tag(addr);
+    for (unsigned way = 0; way < WAYS; way++) 
+    {
+      if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
+      {
+        hit = 1;
+        break;
+      }
+    }     
+    return hit;
+  }
+};
 #endif /* SHADER_H */
