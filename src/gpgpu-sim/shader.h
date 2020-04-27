@@ -48,6 +48,7 @@
 #include "../abstract_hardware_model.h"
 #include "delayqueue.h"
 #include "dram.h"
+#include "gpu-misc.h"
 #include "gpu-cache.h"
 #include "mem_fetch.h"
 #include "scoreboard.h"
@@ -1215,6 +1216,7 @@ class simt_core_cluster;
 class shader_memory_interface;
 class shader_core_mem_fetch_allocator;
 class cache_t;
+class victim_tag_table;
 //raghav
 class ldst_unit : public pipelined_simd_unit {
  public:
@@ -1223,7 +1225,7 @@ class ldst_unit : public pipelined_simd_unit {
             shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
             Scoreboard *scoreboard, const shader_core_config *config,
             const memory_config *mem_config, class shader_core_stats *stats,
-            unsigned sid, unsigned tpc,load_monitor *lm);
+            unsigned sid, unsigned tpc, load_monitor *lm, victim_tag_table *vtt);
 
   // modifiers
   virtual void issue(register_set &inst);
@@ -1282,7 +1284,7 @@ class ldst_unit : public pipelined_simd_unit {
             shader_core_ctx *core, opndcoll_rfu_t *operand_collector,
             Scoreboard *scoreboard, const shader_core_config *config,
             const memory_config *mem_config, shader_core_stats *stats,
-            unsigned sid, unsigned tpc,load_monitor *lm);
+            unsigned sid, unsigned tpc,load_monitor *lm, victim_tag_table *vtt);
 
  protected:
   bool shared_cycle(warp_inst_t &inst, mem_stage_stall_type &rc_fail,
@@ -1313,6 +1315,7 @@ class ldst_unit : public pipelined_simd_unit {
   tex_cache *m_L1T;        // texture cache
   read_only_cache *m_L1C;  // constant cache
   l1_cache *m_L1D;         // data cache
+  class victim_tag_table *m_vtt; //victim tag table
   std::map<unsigned /*warp_id*/,
            std::map<unsigned /*regnum*/, unsigned /*count*/>>
       m_pending_writes;
@@ -2140,6 +2143,8 @@ class shader_core_ctx : public core_t {
   std::vector<pipeline_stage_name_t> m_issue_port;
   std::vector<simd_function_unit *>
       m_fu;  // stallable pipelines should be last in this array
+  //saumya
+  victim_tag_table *m_vtt;
   ldst_unit *m_ldst_unit;
   static const unsigned MAX_ALU_LATENCY = 512;
   unsigned num_result_bus;

@@ -33,7 +33,7 @@
 
 // used to allocate memory that is large enough to adapt the changes in cache
 // size across kernels
-
+unsigned flag = 0;
 const char *cache_request_status_str(enum cache_request_status status) {
   static const char *static_cache_request_status_str[] = {
       "HIT", "HIT_RESERVED", "MISS", "RESERVATION_FAIL", "SECTOR_MISS"};
@@ -255,7 +255,13 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
   // assert( m_config.m_write_policy == READ_ONLY );
   unsigned set_index = m_config.set_index(addr);
   new_addr_type tag = m_config.tag(addr);
-
+  /*if(flag == 0)
+  {
+    printf("Mem_addr = %x,VTT index = %x, VTT tag = %x\n",addr, m_vtt->get_index(addr), m_vtt->get_tag(addr);
+    printf("set index = %x, tag = %x\n",set_index,tag);
+  }
+  flag ++;
+  */
   unsigned invalid_line = (unsigned)-1;
   unsigned valid_line = (unsigned)-1;
   unsigned long long valid_timestamp = (unsigned)-1;
@@ -299,6 +305,8 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
           if (line->get_last_access_time() < valid_timestamp) {
             valid_timestamp = line->get_last_access_time();
             valid_line = index;
+
+
           }
         } else if (m_config.m_replacement_policy == FIFO) {
           if (line->get_alloc_time() < valid_timestamp) {
@@ -1648,6 +1656,9 @@ enum cache_request_status data_cache::access(new_addr_type addr, mem_fetch *mf,
   assert(mf->get_data_size() <= m_config.get_atom_sz());
   bool wr = mf->get_is_write();
   new_addr_type block_addr = m_config.block_addr(addr);
+  // if(flag1 == 0)
+   // printf("Cache addr = %x, block_addr = %x\n",addr,block_addr);
+  // flag1 ++;
   unsigned cache_index = (unsigned)-1;
   enum cache_request_status probe_status =
       m_tag_array->probe(block_addr, cache_index, mf, true);
