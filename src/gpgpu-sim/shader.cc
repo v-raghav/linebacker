@@ -2442,12 +2442,16 @@ void ldst_unit::cycle() {
           }
         } else {
           if (m_L1D->fill_port_free()) {
-            address_type evicted_set_index, evicted_tag;
+            address_type evicted_set_index, evicted_tag; //L1d evicted tag, index for VTT
             evicted_set_index = (unsigned)-1;
             evicted_tag = (unsigned)-1;
 
             m_L1D->fill(mf, m_core->get_gpu()->gpu_sim_cycle +
                                 m_core->get_gpu()->gpu_tot_sim_cycle, evicted_set_index, evicted_tag);
+            m_vtt->fill_tag(evicted_set_index, evicted_tag);
+            address_type way = (unsigned)-1;
+            way = m_vtt->get_way(evicted_set_index);
+            printf("Evicted tag = %x, VTT entry[%d][%d] = %x", evicted_tag, evicted_set_index, way, m_vtt->m_vtt_entry[evicted_set_index][way].tag);
             m_response_fifo.pop_front();
           }
         }

@@ -2285,8 +2285,8 @@ inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
 
 #define N_VP 4 //number of VTT partitions
 #define WAYS 4 //4 way associative
-#define SETS 48 //number of sets
-#define BLOCK_SIZE 128 //
+#define SETS 48 //total number of sets
+#define BLOCK_SIZE 128 //cache line size
 
 struct tag_arr
 {
@@ -2320,17 +2320,25 @@ class victim_tag_table
   address_type get_way(address_type index)
   {
     srand(time(0)); 
-    return (rand() % 4);
+    address_type chosen_way = (rand() % 4); //choose random way
+    for (unsigned way = 0; way < WAYS; way++) {
+        if(m_vtt_entry[index][way].valid = 0){ //choose first empty way in set
+          chosen_way = way; 
+          break;
+        }
+    }
+    return chosen_way;
   }
+  
   address_type get_tag(address_type addr){
     return (addr >> (m_bo_bits + m_idx_bits));
   }
   address_type get_index(address_type addr){
     return (addr >> m_bo_bits) & (SETS-1);
   }
-  void fill(address_type addr){
-    unsigned set_index = get_index(addr);
-    address_type tag = get_tag(addr);
+  void fill(address_type evicted_tag, address_type set_index){
+
+    address_type tag = evicted_tag >> m_idx_bits; //L1d evicted tag contains tag+index
     unsigned way = get_way(set_index);
     m_vtt_entry[set_index][way].valid = 1;
     m_vtt_entry[set_index][way].tag = tag;
