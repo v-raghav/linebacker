@@ -572,15 +572,13 @@ class gpgpu_sim : public gpgpu_t {
   void shader_print_l1_miss_stat(FILE *fout) const;
   void shader_print_cache_stats(FILE *fout) const;
   void shader_print_scheduler_stat(FILE *fout, bool print_dynamic_info) const;
+  void linebacker_print_stats(FILE *fout) const;
   void visualizer_printstat();
   void print_shader_cycle_distro(FILE *fout) const;
 
   void gpgpu_debug();
 
-  ///// data /////
-  //raghav
-  class load_monitor *m_load_monitor;
-  
+  ///// data /////  
   class simt_core_cluster **m_cluster;
   class memory_partition_unit **m_memory_partition_unit;
   class memory_sub_partition **m_memory_sub_partition;

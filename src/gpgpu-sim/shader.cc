@@ -79,7 +79,7 @@ shader_core_ctx::shader_core_ctx(class gpgpu_sim *gpu,
                                  unsigned shader_id, unsigned tpc_id,
                                  const shader_core_config *config,
                                  const memory_config *mem_config,
-                                 shader_core_stats *stats,load_monitor *lm)
+                                 shader_core_stats *stats)
     : core_t(gpu, NULL, config->warp_size, config->n_thread_per_shader),
       m_barriers(this, config->max_warps_per_shader, config->max_cta_per_core,
                  config->max_barriers_per_cta, config->warp_size),
@@ -386,9 +386,10 @@ shader_core_ctx::shader_core_ctx(class gpgpu_sim *gpu,
     m_issue_port.push_back(OC_EX_TENSOR_CORE);
   }
 
+  m_load_monitor=new load_monitor;
   m_ldst_unit =
       new ldst_unit(m_icnt, m_mem_fetch_allocator, this, &m_operand_collector,
-                    m_scoreboard, config, mem_config, stats, shader_id, tpc_id,lm);
+                    m_scoreboard, config, mem_config, stats, shader_id, tpc_id,m_load_monitor);
   m_fu.push_back(m_ldst_unit);
   m_dispatch_port.push_back(ID_OC_MEM);
   m_issue_port.push_back(OC_EX_MEM);
@@ -1790,7 +1791,7 @@ void ldst_unit::L1_latency_queue_cycle() {
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
                         events);
-
+     
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
 
@@ -1811,7 +1812,6 @@ void ldst_unit::L1_latency_queue_cycle() {
                 m_scoreboard->releaseRegister(mf_next->get_inst().warp_id(),
                                               mf_next->get_inst().out[r]);
                 m_core->warp_inst_complete(mf_next->get_inst());
-                m_lm->insert(mf_next->get_pc(),true);
               }
             }
         }
@@ -1837,7 +1837,10 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
       }
+      if(status ==HIT || status == HIT_RESERVED)
+         m_lm->insert(mf_next->get_pc(),true);
     }
+     
 
     for (unsigned stage = 0; stage < m_config->m_L1D_config.l1_latency - 1;
          ++stage)
@@ -2630,7 +2633,6 @@ void gpgpu_sim::shader_print_cache_stats(FILE *fout) const {
     }
     fprintf(fout, "\tL1I_total_cache_accesses = %llu\n", total_css.accesses);
     fprintf(fout, "\tL1I_total_cache_misses = %llu\n", total_css.misses);
-    fprintf(fout, "\tL1I_total_hits in load monitor = %llu\n",m_load_monitor->get_total_hits());
     if (total_css.accesses > 0) {
       fprintf(fout, "\tL1I_total_cache_miss_rate = %.4lf\n",
               (double)total_css.misses / (double)total_css.accesses);
@@ -2713,7 +2715,25 @@ void gpgpu_sim::shader_print_cache_stats(FILE *fout) const {
             total_css.res_fails);
   }
 }
+void gpgpu_sim::linebacker_print_stats(FILE *fout) const {
 
+  struct linebacker_sub_stats total_lss;
+  struct linebacker_sub_stats lss;
+  fprintf(fout, "\n========= Linebacker stats =========\n");
+
+  for (unsigned i = 0; i < m_shader_config->n_simt_clusters; ++i) {
+    m_cluster[i]->get_linebacker_sub_stats(lss);
+    total_lss += lss;
+
+    fprintf(stdout,
+              "\tCore Load Monitor[%d]: Hit = %llu, Miss = %llu\n",
+              i, lss.lm_hits, lss.lm_misses);
+  }
+  fprintf(fout, "Load Monitor:\n");
+  fprintf(fout, "\tTotal load monitor hits = %llu\n", total_lss.lm_hits);
+  fprintf(fout, "\tTotal load monitor misses = %llu\n", total_lss.lm_misses);
+
+}
 void gpgpu_sim::shader_print_l1_miss_stat(FILE *fout) const {
   unsigned total_d1_misses = 0, total_d1_accesses = 0;
   for (unsigned i = 0; i < m_shader_config->n_simt_clusters; ++i) {
@@ -3563,7 +3583,9 @@ void shader_core_ctx::get_L1C_sub_stats(struct cache_sub_stats &css) const {
 void shader_core_ctx::get_L1T_sub_stats(struct cache_sub_stats &css) const {
   m_ldst_unit->get_L1T_sub_stats(css);
 }
-
+void shader_core_ctx::get_linebacker_sub_stats(struct linebacker_sub_stats &lss) const{
+  m_load_monitor->get_lm_sub_stats(lss);
+}
 void shader_core_ctx::get_icnt_power_stats(long &n_simt_to_mem,
                                            long &n_mem_to_simt) const {
   n_simt_to_mem += m_stats->n_simt_to_mem[m_sid];
@@ -3917,7 +3939,7 @@ simt_core_cluster::simt_core_cluster(class gpgpu_sim *gpu, unsigned cluster_id,
                                      const shader_core_config *config,
                                      const memory_config *mem_config,
                                      shader_core_stats *stats,
-                                     class memory_stats_t *mstats,load_monitor *lm) {
+                                     class memory_stats_t *mstats) {
   m_config = config;
   m_cta_issue_next_core = m_config->n_simt_cores_per_cluster -
                           1;  // this causes first launch to use hw cta 0
@@ -3929,7 +3951,7 @@ simt_core_cluster::simt_core_cluster(class gpgpu_sim *gpu, unsigned cluster_id,
   for (unsigned i = 0; i < config->n_simt_cores_per_cluster; i++) {
     unsigned sid = m_config->cid_to_sid(i, m_cluster_id);
     m_core[i] = new shader_core_ctx(gpu, this, sid, m_cluster_id, config,
-                                    mem_config, stats,lm);
+                                    mem_config, stats);
     m_core_sim_order.push_back(i);
   }
 }
@@ -4242,6 +4264,19 @@ void simt_core_cluster::get_L1T_sub_stats(struct cache_sub_stats &css) const {
   }
   css = total_css;
 }
+void simt_core_cluster::get_linebacker_sub_stats(struct linebacker_sub_stats &lss) const {
+
+  struct linebacker_sub_stats temp_lss;
+  struct linebacker_sub_stats total_lss;
+  temp_lss.clear();
+  total_lss.clear();
+  for (unsigned i = 0; i < m_config->n_simt_cores_per_cluster; ++i) {
+    m_core[i]->get_linebacker_sub_stats(temp_lss);
+    total_lss += temp_lss;
+  }
+  lss = total_lss;
+
+}
 
 void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst,
                                                     unsigned t, unsigned tid) {
@@ -4269,4 +4304,42 @@ void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst,
       cflog_update_thread_pc(m_sid, tid, pc);
     }
   }
+}
+
+load_monitor::load_monitor() {
+  m_lm_entry.reserve(100);
+  init({0,0,0,0b00});
+}
+
+address_type load_monitor::get_hpc(address_type pc) {
+  return pc & 0x1F;
+}
+
+void load_monitor::init(load_monitor_entry entry_value) {
+  for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) 
+    m_lm_entry[i]=entry_value;  
+}
+
+void load_monitor::insert(address_type pc, bool hit) {
+  address_type hashed_pc= get_hpc(pc);
+  if(!m_lm_entry[hashed_pc].PC)
+    m_lm_entry[hashed_pc].PC = pc;
+  if(hit)
+    m_lm_entry[hashed_pc].hit_count++;
+  else
+    m_lm_entry[hashed_pc].miss_count++;
+}   
+
+void load_monitor::get_lm_sub_stats(struct linebacker_sub_stats &lss) {
+ 
+  for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
+    lss.lm_hits+=m_lm_entry[i].hit_count;
+    lss.lm_misses+=m_lm_entry[i].miss_count;
+  }
+
+}
+    
+struct load_monitor_entry load_monitor::get_entry(address_type pc){
+  unsigned hashed_pc=get_hpc(pc);
+  return m_lm_entry[hashed_pc];
 }
