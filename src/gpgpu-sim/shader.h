@@ -300,6 +300,9 @@ int register_bank(int regnum, int wid, unsigned num_banks,
 class shader_core_ctx;
 class shader_core_config;
 class shader_core_stats;
+struct linebacker_sub_stats;
+struct load_monitor_entry;
+class load_monitor;
 
 enum scheduler_prioritization_type {
   SCHEDULER_PRIORITIZATION_LRR = 0,   // Loose Round Robin
@@ -1812,7 +1815,7 @@ class shader_core_ctx : public core_t {
   shader_core_ctx(class gpgpu_sim *gpu, class simt_core_cluster *cluster,
                   unsigned shader_id, unsigned tpc_id,
                   const shader_core_config *config,
-                  const memory_config *mem_config, shader_core_stats *stats,load_monitor *lm);
+                  const memory_config *mem_config, shader_core_stats *stats);
 
   // used by simt_core_cluster:
   // modifiers
@@ -1883,7 +1886,7 @@ class shader_core_ctx : public core_t {
   void get_L1D_sub_stats(struct cache_sub_stats &css) const;
   void get_L1C_sub_stats(struct cache_sub_stats &css) const;
   void get_L1T_sub_stats(struct cache_sub_stats &css) const;
-
+  void get_linebacker_sub_stats(struct linebacker_sub_stats &lss) const;
   void get_icnt_power_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
 
   // debug:
@@ -2099,7 +2102,7 @@ class shader_core_ctx : public core_t {
   const shader_core_config *m_config;
   const memory_config *m_memory_config;
   class simt_core_cluster *m_cluster;
-
+  class load_monitor *m_load_monitor;
   // statistics
   shader_core_stats *m_stats;
 
@@ -2180,7 +2183,7 @@ class simt_core_cluster {
   simt_core_cluster(class gpgpu_sim *gpu, unsigned cluster_id,
                     const shader_core_config *config,
                     const memory_config *mem_config, shader_core_stats *stats,
-                    memory_stats_t *mstats,load_monitor *lm);
+                    memory_stats_t *mstats);
 
   void core_cycle();
   void icnt_cycle();
@@ -2218,6 +2221,7 @@ class simt_core_cluster {
   void get_L1D_sub_stats(struct cache_sub_stats &css) const;
   void get_L1C_sub_stats(struct cache_sub_stats &css) const;
   void get_L1T_sub_stats(struct cache_sub_stats &css) const;
+  void get_linebacker_sub_stats(struct linebacker_sub_stats &lss) const;
 
   void get_icnt_stats(long &n_simt_to_mem, long &n_mem_to_simt) const;
   float get_current_occupancy(unsigned long long &active,
@@ -2348,4 +2352,60 @@ class victim_tag_table
     return hit;
   }
 };
+
+//stats for various linebacker components
+struct linebacker_sub_stats {
+ 
+  unsigned long long lm_accesses;
+  unsigned long long lm_misses;
+  unsigned long long lm_hits;
+ 
+  unsigned long long vtt_hits;
+  unsigned long long vtt_misses;
+
+  linebacker_sub_stats() { clear(); }
+  void clear() {
+    lm_accesses = 0;
+    lm_misses = 0;
+    lm_hits = 0;
+    vtt_hits = 0;
+    vtt_misses = 0;
+  }
+  linebacker_sub_stats &operator+=(const linebacker_sub_stats &lss) {
+    ///
+    /// Overloading += operator to easily accumulate stats
+    ///
+    lm_accesses += lss.lm_accesses;
+    lm_misses += lss.lm_misses;
+    lm_hits += lss.lm_hits;
+    vtt_hits += lss.vtt_hits;
+    vtt_misses += lss.vtt_misses;
+    return *this;
+  }
+};
+
+#define LOAD_MONITOR_ENTRIES 32
+struct load_monitor_entry {
+
+  address_type PC;
+  unsigned hit_count;
+  unsigned miss_count;
+  std::bitset<2> valid; // 2-bit valid
+  
+};
+class load_monitor{
+  public:
+
+   load_monitor();
+   void init(load_monitor_entry entry_value);
+   void insert(address_type pc, bool hit);
+   struct load_monitor_entry get_entry(address_type pc);
+   void get_lm_sub_stats(struct linebacker_sub_stats &lss);
+   address_type get_hpc(address_type pc);
+
+   private:
+   std::vector<load_monitor_entry> m_lm_entry;
+
+};
+
 #endif /* SHADER_H */
