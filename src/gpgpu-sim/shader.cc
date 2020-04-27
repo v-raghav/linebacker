@@ -1793,7 +1793,6 @@ void ldst_unit::L1_latency_queue_cycle() {
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
                         events);
-<<<<<<< HEAD
           //saumya
           
           //unsigned vtt_tag = m_vtt->get_tag(mf_next->get_addr());
@@ -1802,9 +1801,6 @@ void ldst_unit::L1_latency_queue_cycle() {
             printf("Mem_addr = %x,VTT index = %x, VTT tag = %x\n",mf_next->get_addr(), m_vtt->get_index(mf_next->get_addr()), m_vtt->get_tag(mf_next->get_addr()) );
           flag ++;
           */
-=======
-     
->>>>>>> 24469cc73982a4ec8fb4d3c3bee0724b611301c2
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
 
@@ -1825,11 +1821,6 @@ void ldst_unit::L1_latency_queue_cycle() {
                 m_scoreboard->releaseRegister(mf_next->get_inst().warp_id(),
                                               mf_next->get_inst().out[r]);
                 m_core->warp_inst_complete(mf_next->get_inst());
-<<<<<<< HEAD
-                m_lm->insert(mf_next->get_pc(),true);
-                
-=======
->>>>>>> 24469cc73982a4ec8fb4d3c3bee0724b611301c2
               }
             }
         }
