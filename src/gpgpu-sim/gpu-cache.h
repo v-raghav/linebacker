@@ -838,7 +838,7 @@ class tag_array {
   void fill(unsigned idx, unsigned time, mem_fetch *mf);
   void fill(new_addr_type addr, unsigned time, mem_fetch *mf,address_type &evicted_set_index, address_type &evicted_tag);
   void fill(new_addr_type addr, unsigned time,
-                     mem_access_sector_mask_t mask, address_type evicted_set_index, address_type evicted_tag);
+                     mem_access_sector_mask_t mask, address_type &evicted_set_index, address_type &evicted_tag);
   void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask);
 
   unsigned size() const { return m_config.get_num_lines(); }

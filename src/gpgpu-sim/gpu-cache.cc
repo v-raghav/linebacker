@@ -339,7 +339,7 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
                                            address_type &evicted_set_index, address_type &evicted_tag,
                                            bool probe_mode) const {
   mem_access_sector_mask_t mask = mf->get_access_sector_mask();
-  return probe(addr, idx, mask, probe_mode, mf,evicted_set_index, evicted_tag);
+  return probe(addr, idx, mask, evicted_set_index, evicted_tag, probe_mode, mf);
 }
 
 enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
@@ -1175,6 +1175,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
       delete temp;
     }
   }
+}
   void baseline_cache::fill(mem_fetch *mf, unsigned time, address_type &evicted_set_index, address_type &evicted_tag) {
   if (m_config.m_mshr_type == SECTOR_ASSOC) {
     assert(mf->get_original_mf());
