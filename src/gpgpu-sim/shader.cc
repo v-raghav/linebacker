@@ -52,7 +52,7 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
-unsigned flag = 0;
+//unsigned flag = 0;
 mem_fetch *shader_core_mem_fetch_allocator::alloc(
     new_addr_type addr, mem_access_type type, unsigned size, bool wr,
     unsigned long long cycle) const {
@@ -386,7 +386,7 @@ shader_core_ctx::shader_core_ctx(class gpgpu_sim *gpu,
     m_dispatch_port.push_back(ID_OC_TENSOR_CORE);
     m_issue_port.push_back(OC_EX_TENSOR_CORE);
   }
-
+  m_vtt = new victim_tag_table();
   m_ldst_unit =
       new ldst_unit(m_icnt, m_mem_fetch_allocator, this, &m_operand_collector,
                     m_scoreboard, config, mem_config, stats, shader_id, tpc_id, lm, m_vtt);
@@ -1793,10 +1793,11 @@ void ldst_unit::L1_latency_queue_cycle() {
           //saumya
           
           //unsigned vtt_tag = m_vtt->get_tag(mf_next->get_addr());
+          /*
           if(flag == 0)
-            printf("Mem_addr = %x,VTT TAG = %x\n",mf_next->get_addr(), m_vtt->get_tag(mf_next->get_addr()));
+            printf("Mem_addr = %x,VTT index = %x, VTT tag = %x\n",mf_next->get_addr(), m_vtt->get_index(mf_next->get_addr()), m_vtt->get_tag(mf_next->get_addr()) );
           flag ++;
-          
+          */
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
 
