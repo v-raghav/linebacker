@@ -1166,6 +1166,7 @@ class baseline_cache : public cache_t {
   /// Interface for response from lower memory level (model bandwidth
   /// restictions in caller)
   void fill(mem_fetch *mf, unsigned time);
+  void fill(mem_fetch *mf, unsigned time, address_type &evicted_index, address_type &evicted_tag); 
   /// Checks if mf is waiting to be filled by lower memory level
   bool waiting_for_fill(mem_fetch *mf);
   /// Are any (accepted) accesses that had to wait for memory now ready? (does
