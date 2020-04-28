@@ -298,6 +298,8 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
           if (line->get_last_access_time() < valid_timestamp) {
             valid_timestamp = line->get_last_access_time();
             valid_line = index;
+
+
           }
         } else if (m_config.m_replacement_policy == FIFO) {
           if (line->get_alloc_time() < valid_timestamp) {
@@ -333,18 +335,10 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
 
   return MISS;
 }
-
-enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
-                                           mem_fetch *mf,
-                                           address_type &evicted_set_index, address_type &evicted_tag,
-                                           bool probe_mode) const {
-  mem_access_sector_mask_t mask = mf->get_access_sector_mask();
-  return probe(addr, idx, mask, evicted_set_index, evicted_tag, probe_mode, mf);
-}
-
+//Overloaded
 enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
                                            mem_access_sector_mask_t mask,
-                                           address_type &evicted_set_index, address_type &evicted_tag,
+                                           address_type &evicted_index, address_type &evicted_tag,
                                            bool probe_mode,
                                            mem_fetch *mf) const {
   // assert( m_config.m_write_policy == READ_ONLY );
@@ -393,6 +387,8 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
           if (line->get_last_access_time() < valid_timestamp) {
             valid_timestamp = line->get_last_access_time();
             valid_line = index;
+
+
           }
         } else if (m_config.m_replacement_policy == FIFO) {
           if (line->get_alloc_time() < valid_timestamp) {
@@ -400,8 +396,8 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
             valid_line = index;
           }
         }
-        evicted_set_index=set_index;
-        evicted_tag=line->m_tag; // returns index+tag for vtt
+        evicted_index=set_index;
+        evicted_tag=line->m_tag;
       }
     }
   }
@@ -510,15 +506,16 @@ void tag_array::fill(new_addr_type addr, unsigned time,
 
   m_lines[idx]->fill(time, mask);
 }
-void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf,address_type &evicted_set_index, address_type &evicted_tag) {
-  fill(addr, time, mf->get_access_sector_mask(),evicted_set_index, evicted_tag);
+//Overloaded
+void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf, address_type &evicted_index, address_type &evicted_tag) {
+  fill(addr, time, mf->get_access_sector_mask(), evicted_index, evicted_tag);
 }
 
 void tag_array::fill(new_addr_type addr, unsigned time,
-                     mem_access_sector_mask_t mask, address_type &evicted_set_index, address_type &evicted_tag) {
+                     mem_access_sector_mask_t mask, address_type &evicted_index, address_type &evicted_tag) {
   // assert( m_config.m_alloc_policy == ON_FILL );
   unsigned idx;
-  enum cache_request_status status = probe(addr, idx, mask, evicted_set_index, evicted_tag);
+  enum cache_request_status status = probe(addr, idx, mask,evicted_index, evicted_tag);
   // assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented
   // redundant memory request
   if (status == MISS)
@@ -531,7 +528,6 @@ void tag_array::fill(new_addr_type addr, unsigned time,
 
   m_lines[idx]->fill(time, mask);
 }
-
 void tag_array::fill(unsigned index, unsigned time, mem_fetch *mf) {
   assert(m_config.m_alloc_policy == ON_MISS);
   m_lines[index]->fill(time, mf->get_access_sector_mask());
@@ -1175,8 +1171,34 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
       delete temp;
     }
   }
+  
+  extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
+  assert(e != m_extra_mf_fields.end());
+  assert(e->second.m_valid);
+  mf->set_data_size(e->second.m_data_size);
+  mf->set_addr(e->second.m_addr);
+  if (m_config.m_alloc_policy == ON_MISS)
+    m_tag_array->fill(e->second.m_cache_index, time, mf);
+  else if (m_config.m_alloc_policy == ON_FILL) {
+    m_tag_array->fill(e->second.m_block_addr, time, mf);
+    if (m_config.is_streaming()) m_tag_array->remove_pending_line(mf);
+  } else
+    abort();
+  bool has_atomic = false;
+  m_mshrs.mark_ready(e->second.m_block_addr, has_atomic);
+  if (has_atomic) {
+    assert(m_config.m_alloc_policy == ON_MISS);
+    cache_block_t *block = m_tag_array->get_block(e->second.m_cache_index);
+    block->set_status(MODIFIED,
+                      mf->get_access_sector_mask());  // mark line as dirty for
+                                                      // atomic operation
+  }
+  m_extra_mf_fields.erase(mf);
+  m_bandwidth_management.use_fill_port(mf);
 }
-  void baseline_cache::fill(mem_fetch *mf, unsigned time, address_type &evicted_set_index, address_type &evicted_tag) {
+
+
+void baseline_cache::fill(mem_fetch *mf, unsigned time, address_type &evicted_index, address_type &evicted_tag) {
   if (m_config.m_mshr_type == SECTOR_ASSOC) {
     assert(mf->get_original_mf());
     extra_mf_fields_lookup::iterator e =
@@ -1194,7 +1216,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
       delete temp;
     }
   }
-
+  
   extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
   assert(e != m_extra_mf_fields.end());
   assert(e->second.m_valid);
@@ -1203,7 +1225,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
   if (m_config.m_alloc_policy == ON_MISS)
     m_tag_array->fill(e->second.m_cache_index, time, mf);
   else if (m_config.m_alloc_policy == ON_FILL) {
-    m_tag_array->fill(e->second.m_block_addr, time, mf, evicted_set_index, evicted_tag);
+    m_tag_array->fill(e->second.m_block_addr, time, mf,evicted_index,evicted_tag);
     if (m_config.is_streaming()) m_tag_array->remove_pending_line(mf);
   } else
     abort();
@@ -1218,8 +1240,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
   }
   m_extra_mf_fields.erase(mf);
   m_bandwidth_management.use_fill_port(mf);
-}
-
+}  
 /// Checks if mf is waiting to be filled by lower memory level
 bool baseline_cache::waiting_for_fill(mem_fetch *mf) {
   extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);

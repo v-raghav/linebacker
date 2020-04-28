@@ -2317,17 +2317,15 @@ class victim_tag_table
         m_vtt_entry[set][way] = init_value;
     }
   }
-  address_type get_way(address_type index)
+  address_type get_way(address_type set_index)
   {
-    srand(time(0)); 
-    address_type chosen_way = (rand() % 4); //choose random way
     for (unsigned way = 0; way < WAYS; way++) {
-        if(m_vtt_entry[index][way].valid == 0) { //choose first empty way in set
-          chosen_way = way; 
-          break;
-        }
+      if(m_vtt_entry[set_index][way].valid == 0)
+        return way;
     }
-    return chosen_way;
+    srand(time(0)); 
+    return (rand() % WAYS);
+
   }
   
   address_type get_tag(address_type addr){
