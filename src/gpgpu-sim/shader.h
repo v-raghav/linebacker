@@ -42,6 +42,7 @@
 #include <set>
 #include <utility>
 #include <vector>
+#include <cmath>
 
 //#include "../cuda-sim/ptx.tab.h"
 
@@ -2303,8 +2304,8 @@ class victim_tag_table
   unsigned m_idx_bits;
   
   victim_tag_table() {
-      m_bo_bits = LOGB2(BLOCK_SIZE); 
-      m_idx_bits = LOGB2(SETS);
+      m_bo_bits = ceil(log2(BLOCK_SIZE)); 
+      m_idx_bits = ceil(log2(SETS));
       m_vtt_entry.reserve(SETS);
       for(unsigned set = 0; set < SETS; set++)
         m_vtt_entry[set].resize(WAYS);
@@ -2324,7 +2325,7 @@ class victim_tag_table
         return way;
     }
     srand(time(0)); 
-    return (rand() % WAYS);
+    return (rand() % 4);
 
   }
   
@@ -2334,7 +2335,7 @@ class victim_tag_table
   address_type get_index(address_type addr){
     return (addr >> m_bo_bits) & (SETS-1);
   }
-  void fill(address_type evicted_tag, address_type set_index){
+  void fill_tag(address_type evicted_tag, address_type set_index){
 
     address_type tag = evicted_tag >> m_idx_bits; //L1d evicted tag contains tag+index
     unsigned way = get_way(set_index);
