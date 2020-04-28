@@ -2452,7 +2452,7 @@ void ldst_unit::cycle() {
             
             
             
-            if(evicted_index != (unsigned)-1))
+            if(evicted_index != (unsigned)-1)
             {
               chosen_way = m_vtt->get_way(evicted_index);
               m_vtt->fill_tag(evicted_tag, evicted_index);
