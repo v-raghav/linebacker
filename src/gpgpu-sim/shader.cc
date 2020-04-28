@@ -2445,8 +2445,15 @@ void ldst_unit::cycle() {
           if (m_L1D->fill_port_free()) {
             address_type evicted_index=(unsigned)-1;
             address_type evicted_tag= (unsigned)-1;
+            address_type chosen_way = (unsigned)-1;
+            address_type chosen_tag;
             m_L1D->fill(mf, m_core->get_gpu()->gpu_sim_cycle +
                                 m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag);
+            chosen_way = m_vtt->get_way(evicted_index);
+            m_vtt->fill_tag(evicted_tag, evicted_index);
+            chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
+            printf("Evicted_tag = %x, VTT[%lu][%lu] = %x, evicted_tag, evicted_index, chosen_way,chosen_tag);
+            
             m_response_fifo.pop_front();
           }
         }

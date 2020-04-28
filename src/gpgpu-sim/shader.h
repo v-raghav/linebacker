@@ -2334,7 +2334,7 @@ class victim_tag_table
   address_type get_index(address_type addr){
     return (addr >> m_bo_bits) & (SETS-1);
   }
-  void fill(address_type evicted_tag, address_type set_index){
+  void fill_tag(address_type evicted_tag, address_type set_index){
 
     address_type tag = evicted_tag >> m_idx_bits; //L1d evicted tag contains tag+index
     unsigned way = get_way(set_index);
