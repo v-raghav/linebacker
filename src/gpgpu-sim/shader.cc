@@ -2456,8 +2456,8 @@ void ldst_unit::cycle() {
             {
               chosen_way = m_vtt->get_way(evicted_index);
               m_vtt->fill_tag(evicted_tag, evicted_index);
-              //chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
-              //printf("Evicted_tag = %x, VTT[%lu][%lu] = %x\n", evicted_tag, evicted_index, chosen_way,chosen_tag);
+              chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
+              printf("Evicted_tag = %x, VTT[%lu][%lu] = %x\n", evicted_tag, evicted_index, chosen_way,chosen_tag);
             }
               
             //
