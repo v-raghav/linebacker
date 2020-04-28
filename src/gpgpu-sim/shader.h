@@ -2323,8 +2323,8 @@ class victim_tag_table
       if(m_vtt_entry[set_index][way].valid == 0)
         return way;
     }
-    srand(time(0)); 
-    return (rand() % WAYS);
+    //srand(time(0)); 
+    return (3);
 
   }
   

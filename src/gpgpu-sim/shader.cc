@@ -2455,12 +2455,12 @@ void ldst_unit::cycle() {
             {
               for(unsigned j=0; j<4; j++)
               {
-                printf("VTT[%lu][%lu] = %x", i, j, m_vtt->m_vtt_entry[i][j]);
+                printf("VTT[%lu][%lu] = %x\n", i, j, m_vtt->m_vtt_entry[i][j].valid);
               }
                 
             }
              
-            printf("Evicted index = %lu Evicted tag = %lu\n");
+            printf("Evicted index = %lu Evicted tag = %lu\n",evicted_index, evicted_tag);
             //chosen_way = m_vtt->get_way(47);
             //printf("WAY= %lu\n",chosen_way);
             //m_vtt->fill_tag(evicted_tag, evicted_index);
