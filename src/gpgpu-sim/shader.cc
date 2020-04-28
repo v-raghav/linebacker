@@ -525,7 +525,7 @@ float shader_core_ctx::get_current_occupancy(unsigned long long &active,
     return 0;
   }
 }
-/*
+
 void shader_core_stats::print(FILE *fout) const {
   unsigned long long thread_icount_uarch = 0;
   unsigned long long warp_icount_uarch = 0;
@@ -652,7 +652,7 @@ void shader_core_stats::print(FILE *fout) const {
 
   m_outgoing_traffic_stats->print(fout);
   m_incoming_traffic_stats->print(fout);
-} */
+}
 
 void shader_core_stats::event_warp_issued(unsigned s_id, unsigned warp_id,
                                           unsigned num_issued,
@@ -1838,6 +1838,7 @@ void ldst_unit::L1_latency_queue_cycle() {
         }
 
         if (!write_sent) delete mf_next;
+        m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
 
       } else if (status == RESERVATION_FAIL) {
         assert(!read_sent);
@@ -1846,8 +1847,8 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
       }
-      if(status ==HIT || status == HIT_RESERVED)
-         m_lm->insert(mf_next->get_pc(),true);
+     
+        
     }
      
 
@@ -2442,16 +2443,10 @@ void ldst_unit::cycle() {
           }
         } else {
           if (m_L1D->fill_port_free()) {
-            address_type evicted_set_index, evicted_tag; //L1d evicted tag, index for VTT
-            evicted_set_index = (unsigned)-1;
-            evicted_tag = (unsigned)-1;
-
+            address_type evicted_index=(unsigned)-1;
+            address_type evicted_tag= (unsigned)-1;
             m_L1D->fill(mf, m_core->get_gpu()->gpu_sim_cycle +
-                                m_core->get_gpu()->gpu_tot_sim_cycle, evicted_set_index, evicted_tag);
-            m_vtt->fill_tag(evicted_set_index, evicted_tag);
-            address_type way = (unsigned)-1;
-            way = m_vtt->get_way(evicted_set_index);
-            printf("Evicted tag = %x, VTT entry[%d][%d] = %x", evicted_tag, evicted_set_index, way, m_vtt->m_vtt_entry[evicted_set_index][way].tag);
+                                m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag);
             m_response_fifo.pop_front();
           }
         }

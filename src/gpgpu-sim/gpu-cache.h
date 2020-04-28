@@ -821,13 +821,13 @@ class tag_array {
                                   mem_access_sector_mask_t mask,
                                   bool probe_mode = false,
                                   mem_fetch *mf = NULL) const;
-  enum cache_request_status probe(new_addr_type addr, unsigned &idx,
-                                  mem_fetch *mf,address_type &evicted_set_index, address_type &evicted_tag, bool probe_mode = false) const;
+  //Overloaded                                
   enum cache_request_status probe(new_addr_type addr, unsigned &idx,
                                   mem_access_sector_mask_t mask,
-                                  address_type &evicted_set_index, address_type &evicted_tag,
+                                  address_type &evicted_index, address_type &evicted_tag,
                                   bool probe_mode = false,
-                                  mem_fetch *mf = NULL) const;
+                                  mem_fetch *mf = NULL) const;                                 
+
   enum cache_request_status access(new_addr_type addr, unsigned time,
                                    unsigned &idx, mem_fetch *mf);
   enum cache_request_status access(new_addr_type addr, unsigned time,
@@ -836,10 +836,9 @@ class tag_array {
 
   void fill(new_addr_type addr, unsigned time, mem_fetch *mf);
   void fill(unsigned idx, unsigned time, mem_fetch *mf);
-  void fill(new_addr_type addr, unsigned time, mem_fetch *mf,address_type &evicted_set_index, address_type &evicted_tag);
-  void fill(new_addr_type addr, unsigned time,
-                     mem_access_sector_mask_t mask, address_type &evicted_set_index, address_type &evicted_tag);
   void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask);
+  void fill(new_addr_type addr, unsigned time, mem_fetch *mf,address_type &evicted_index, address_type &evicted_tag);
+  void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask,address_type &evicted_index, address_type &evicted_tag);
 
   unsigned size() const { return m_config.get_num_lines(); }
   cache_block_t *get_block(unsigned idx) { return m_lines[idx]; }
@@ -1176,8 +1175,7 @@ class baseline_cache : public cache_t {
   /// Interface for response from lower memory level (model bandwidth
   /// restictions in caller)
   void fill(mem_fetch *mf, unsigned time);
-  //overload for vtt
-  void fill(mem_fetch *mf, unsigned time, address_type &evicted_set_index, address_type &evicted_tag);
+  void fill(mem_fetch *mf, unsigned time, address_type &evicted_index, address_type &evicted_tag); 
   /// Checks if mf is waiting to be filled by lower memory level
   bool waiting_for_fill(mem_fetch *mf);
   /// Are any (accepted) accesses that had to wait for memory now ready? (does
