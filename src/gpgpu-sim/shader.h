@@ -2304,7 +2304,7 @@ class victim_tag_table
   unsigned m_idx_bits;
   
   victim_tag_table() {
-      m_bo_bits = LOGB2(BLOCK_SIZE); 
+      m_bo_bits = ceil(log2(BLOCK_SIZE)); 
       m_idx_bits = ceil(log2(SETS));
       m_vtt_entry.reserve(SETS);
       for(unsigned set = 0; set < SETS; set++)

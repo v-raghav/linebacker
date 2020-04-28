@@ -525,7 +525,7 @@ float shader_core_ctx::get_current_occupancy(unsigned long long &active,
     return 0;
   }
 }
-/*
+
 void shader_core_stats::print(FILE *fout) const {
   unsigned long long thread_icount_uarch = 0;
   unsigned long long warp_icount_uarch = 0;
@@ -653,7 +653,7 @@ void shader_core_stats::print(FILE *fout) const {
   m_outgoing_traffic_stats->print(fout);
   m_incoming_traffic_stats->print(fout);
 }
-*/
+
 void shader_core_stats::event_warp_issued(unsigned s_id, unsigned warp_id,
                                           unsigned num_issued,
                                           unsigned dynamic_warp_id) {
@@ -2456,8 +2456,8 @@ void ldst_unit::cycle() {
             {
               chosen_way = m_vtt->get_way(evicted_index);
               m_vtt->fill_tag(evicted_tag, evicted_index);
-              chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
-              printf("Evicted_tag = %x, VTT[%lu][%lu] = %x\n", evicted_tag, evicted_index, chosen_way,chosen_tag);
+              //chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
+              //printf("Evicted_tag = %x, VTT[%lu][%lu] = %x\n", evicted_tag, evicted_index, chosen_way,chosen_tag);
             }
               
             //
