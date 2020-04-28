@@ -1838,6 +1838,7 @@ void ldst_unit::L1_latency_queue_cycle() {
         }
 
         if (!write_sent) delete mf_next;
+        m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
 
       } else if (status == RESERVATION_FAIL) {
         assert(!read_sent);
@@ -1846,8 +1847,8 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
       }
-      if(status ==HIT || status == HIT_RESERVED)
-         m_lm->insert(mf_next->get_pc(),true);
+     
+        
     }
      
 
@@ -2442,8 +2443,10 @@ void ldst_unit::cycle() {
           }
         } else {
           if (m_L1D->fill_port_free()) {
+            address_type evicted_index=(unsigned)-1;
+            address_type evicted_tag= (unsigned)-1;
             m_L1D->fill(mf, m_core->get_gpu()->gpu_sim_cycle +
-                                m_core->get_gpu()->gpu_tot_sim_cycle);
+                                m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag);
             m_response_fifo.pop_front();
           }
         }
