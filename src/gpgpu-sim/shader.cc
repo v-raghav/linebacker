@@ -2446,7 +2446,7 @@ void ldst_unit::cycle() {
             address_type evicted_index=(unsigned)-1;
             address_type evicted_tag= (unsigned)-1;
             m_L1D->fill(mf, m_core->get_gpu()->gpu_sim_cycle +
-                                m_core->get_gpu()->gpu_tot_sim_cycle);
+                                m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag);
             m_response_fifo.pop_front();
           }
         }
