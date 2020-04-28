@@ -2451,8 +2451,9 @@ void ldst_unit::cycle() {
                                 m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag);
             
             printf("VTT: BO bits =%u, idx bits = %u \n",m_vtt->m_bo_bits, m_vtt->m_idx_bits);
-            //chosen_way = m_vtt->get_way(evicted_index);
-            //printf("WAY= %lu\n",chosen_way);
+            //printf("VTT[%lu][%lu] = %x", evicted_tag, evicted_index, chosen_way,);
+            chosen_way = m_vtt->get_way(evicted_index);
+            printf("WAY= %lu\n",chosen_way);
            // m_vtt->fill_tag(evicted_tag, evicted_index);
            // chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
            // printf("Evicted_tag = %x, VTT[%lu][%lu] = %x", evicted_tag, evicted_index, chosen_way,chosen_tag);

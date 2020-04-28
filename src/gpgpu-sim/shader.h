@@ -2307,7 +2307,7 @@ class victim_tag_table
       m_idx_bits = LOGB2(SETS);
       m_vtt_entry.reserve(SETS);
       for(unsigned set = 0; set < SETS; set++)
-        m_vtt_entry[set].resize(WAYS);
+        m_vtt_entry[set].reserve(WAYS);
       init({0,0b0});
   }
   void init(tag_arr init_value){
