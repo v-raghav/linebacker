@@ -1838,6 +1838,7 @@ void ldst_unit::L1_latency_queue_cycle() {
         }
 
         if (!write_sent) delete mf_next;
+        m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
 
       } else if (status == RESERVATION_FAIL) {
         assert(!read_sent);
@@ -1846,8 +1847,8 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
       }
-      if(status == HIT) //Data cache is on-fill and does not count pending hits
-         m_lm->insert(mf_next->get_pc(),true);
+     
+        
     }
      
 
