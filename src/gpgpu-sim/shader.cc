@@ -2451,7 +2451,7 @@ void ldst_unit::cycle() {
                                 m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag);
             
             
-            
+            //saumya
             if(evicted_index != (unsigned)-1)
             {
               chosen_way = m_vtt->get_way(evicted_index);

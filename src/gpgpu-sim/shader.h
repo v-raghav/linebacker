@@ -42,6 +42,7 @@
 #include <set>
 #include <utility>
 #include <vector>
+#include <cmath>
 
 //#include "../cuda-sim/ptx.tab.h"
 
@@ -2304,7 +2305,7 @@ class victim_tag_table
   
   victim_tag_table() {
       m_bo_bits = LOGB2(BLOCK_SIZE); 
-      m_idx_bits = LOGB2(SETS) + 1;
+      m_idx_bits = ceil(log2(SETS));
       m_vtt_entry.reserve(SETS);
       for(unsigned set = 0; set < SETS; set++)
         m_vtt_entry[set].resize(WAYS);
