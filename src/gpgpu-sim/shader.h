@@ -2320,7 +2320,7 @@ class victim_tag_table
   address_type get_way(address_type set_index)
   {
     for (unsigned way = 0; way < WAYS; way++) {
-      if(!m_vtt_entry[set_index][way].valid)
+      if(m_vtt_entry[set_index][way].valid == 0)
         return way;
     }
     srand(time(0)); 
