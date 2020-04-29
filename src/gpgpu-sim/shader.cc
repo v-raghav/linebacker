@@ -3243,13 +3243,13 @@ void shader_core_config::set_pipeline_latency() {
 void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
 
-  if(this->get_gpu()->gpu_sim_cycle() == MONITORING_PERIOD) {
+  if(m_gpu->gpu_sim_cycle() == MONITORING_PERIOD) {
     if(m_sid == 0)
       m_load_monitor->print_state();
     m_load_monitor->update(0);
    
   }
-  else if(this->get_gpu()->gpu_sim_cycle() == MONITORING_PERIOD * NUM_PERIODS) {
+  else if(m_gpu->gpu_sim_cycle() == MONITORING_PERIOD * NUM_PERIODS) {
     m_vtt->flush();
     if(m_sid == 0)
      m_load_monitor->print_state();
