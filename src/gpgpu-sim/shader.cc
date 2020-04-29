@@ -3242,7 +3242,21 @@ void shader_core_config::set_pipeline_latency() {
 
 void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
+  if(get_gpu()->gpu_sim_cycle() == MONITORING_PERIOD) {
+    if(m_sid == 0)
+      m_load_monitor->print_state();
+    m_load_monitor->update(0);
+   
+  }
+  elif(get_gpu()->gpu_sim_cycle() == MONITORING_PERIOD) {
+    m_vtt->flush();
+    if(m_sid == 0)
+     m_load_monitor->print_state();
+    m_load_monitor->update(1);
 
+  }
+ 
+  
   m_stats->shader_cycles[m_sid]++;
   writeback();
   execute();
@@ -4387,6 +4401,24 @@ struct load_monitor_entry load_monitor::get_entry(address_type pc){
   return m_lm_entry[hashed_pc];
 }
 
+void load_monitor::update(unsigned period_number){
+  
+    for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
+      if ( m_lm_entry[i].hit_count +  m_lm_entry[i].miss_count > HIT_THRESHOLD ) {
+           m_lm_entry[hashed_pc].valid.set(period_number);
+      }
+      m_lm_entry[i].hit_count=0;
+      m_lm_entry[i].miss_count=0;
+    }  
+}
+void load_monitor::print_state(){
+     printf("Core 0 Stats for LM \n");
+     for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
+       printf("LM[%d] Hits : %u, Misses :%u , Valid: %x\n",m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, m_lm_entry[hashed_pc].valid );
+
+      }
+}
+
 victim_tag_table::victim_tag_table() {
   m_bo_bits = ceil(log2(BLOCK_SIZE)); 
   m_idx_bits = ceil(log2(SETS));
@@ -4450,4 +4482,8 @@ bool victim_tag_table::tag_check(address_type addr, unsigned Nvp) {
  void victim_tag_table::get_vtt_sub_stats(struct linebacker_sub_stats &vss) {
    vss.vtt_accesses+=m_vtt_accesses;
    vss.vtt_hits+=m_vtt_hits;
+}
+
+void victim_tag_table::flush() {
+   init({0,0b0});
 }

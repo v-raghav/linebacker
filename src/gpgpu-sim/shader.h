@@ -2352,6 +2352,7 @@ class victim_tag_table {
 
 ////////LOAD MONITOR///////
 #define LOAD_MONITOR_ENTRIES 32
+#define HIT_THRESHOLD 200
 struct load_monitor_entry {
 
   address_type PC;
@@ -2364,11 +2365,13 @@ class load_monitor {
   public:
 
    load_monitor();
-   void init(load_monitor_entry entry_value);
+   void init(load_monitor_entry entry_value, bool reset_bits=true);
    void insert(address_type pc, bool hit);
    struct load_monitor_entry get_entry(address_type pc);
    void get_lm_sub_stats(struct linebacker_sub_stats &lss);
    address_type get_hpc(address_type pc);
+   void update(unsigned period_number);
+   void print_state();
 
    private:
    std::vector<load_monitor_entry> m_lm_entry;
