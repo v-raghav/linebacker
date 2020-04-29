@@ -4372,3 +4372,68 @@ struct load_monitor_entry load_monitor::get_entry(address_type pc){
   unsigned hashed_pc=get_hpc(pc);
   return m_lm_entry[hashed_pc];
 }
+
+victim_tag_table::victim_tag_table() {
+  m_bo_bits = ceil(log2(BLOCK_SIZE)); 
+  m_idx_bits = ceil(log2(SETS));
+  m_vtt_entry.reserve(SETS);
+  m_vtt_hits = 0;
+  m_vtt_accesses = 0;
+  for(unsigned set = 0; set < SETS; set++)
+    m_vtt_entry[set].resize(WAYS);
+  init({0,0b0});
+}
+
+void victim_tag_table::init(tag_arr init_value) {
+  for(unsigned set = 0; set < SETS; set++)
+  {
+    for(unsigned way = 0; way < WAYS; way++)
+      m_vtt_entry[set][way] = init_value;
+  }
+}
+
+address_type victim_tag_table::get_way(address_type set_index) { 
+  for (unsigned way = 0; way < WAYS; way++) {
+    if(m_vtt_entry[set_index][way].valid == 0)
+      return way;
+  }
+  srand(time(0)); 
+  return (rand() % WAYS);
+}
+ 
+ address_type victim_tag_table::get_tag(address_type addr) {
+  return (addr >> (m_bo_bits + m_idx_bits));
+ }
+
+ address_type victim_tag_table::get_index(address_type addr) {
+  return (addr >> m_bo_bits) & (SETS-1);
+}
+
+ void victim_tag_table::fill_tag(address_type evicted_tag, address_type set_index) {
+  address_type tag = evicted_tag >> (m_idx_bits + m_bo_bits); //L1d evicted tag contains 32 bit tag
+  unsigned way = get_way(set_index);
+  m_vtt_entry[set_index][way].valid = 1;
+  m_vtt_entry[set_index][way].tag = tag;
+  //update_lru(set_index);
+}
+
+bool victim_tag_table::tag_check(address_type addr) {
+   unsigned set_index = get_index(addr);
+   address_type tag = get_tag(addr);
+   m_vtt_accesses+=1;
+   for (unsigned way = 0; way < WAYS; way++) 
+   {
+     if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
+     { 
+       //printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",addr, m_vtt_entry[set_index][way].tag, tag);
+       m_vtt_hits+=1;
+       return true;
+     }
+   }     
+   return false;
+}
+
+ void victim_tag_table::get_vtt_sub_stats(struct linebacker_sub_stats &vss) {
+   vss.vtt_accesses+=m_vtt_accesses;
+   vss.vtt_hits+=m_vtt_hits;
+}

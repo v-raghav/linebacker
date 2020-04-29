@@ -2330,79 +2330,25 @@ struct tag_arr
    
 };
 
-class victim_tag_table 
-{
+class victim_tag_table {
+
   public:
   std::vector<std::vector<tag_arr>> m_vtt_entry; //( SETS ), vector<tag_arr> (WAYS)) ; 
   unsigned m_bo_bits;
   unsigned m_idx_bits;
   unsigned m_vtt_hits;
   unsigned m_vtt_accesses;
-
   
-  victim_tag_table() {
-      m_bo_bits = ceil(log2(BLOCK_SIZE)); 
-      m_idx_bits = ceil(log2(SETS));
-      m_vtt_entry.reserve(SETS);
-      m_vtt_hits = 0;
-      m_vtt_accesses = 0;
-      for(unsigned set = 0; set < SETS; set++)
-        m_vtt_entry[set].resize(WAYS);
-      init({0,0b0});
-  }
-  void init(tag_arr init_value){
-    for(unsigned set = 0; set < SETS; set++)
-    {
-      for(unsigned way = 0; way < WAYS; way++)
-        m_vtt_entry[set][way] = init_value;
-    }
-  }
-  address_type get_way(address_type set_index)
-  {
-    for (unsigned way = 0; way < WAYS; way++) {
-      if(m_vtt_entry[set_index][way].valid == 0)
-        return way;
-    }
-    srand(time(0)); 
-    return (rand() % WAYS);
-
-  }
-  
-  address_type get_tag(address_type addr){
-    return (addr >> (m_bo_bits + m_idx_bits));
-  }
-  address_type get_index(address_type addr){
-    return (addr >> m_bo_bits) & (SETS-1);
-  }
-  void fill_tag(address_type evicted_tag, address_type set_index){
-
-    address_type tag = evicted_tag >> (m_idx_bits + m_bo_bits); //L1d evicted tag contains 32 bit tag
-    unsigned way = get_way(set_index);
-    m_vtt_entry[set_index][way].valid = 1;
-    m_vtt_entry[set_index][way].tag = tag;
-    //update_lru(set_index);
-
-  }
-  bool tag_check(address_type addr){
-    unsigned set_index = get_index(addr);
-    address_type tag = get_tag(addr);
-    m_vtt_accesses+=1;
-    for (unsigned way = 0; way < WAYS; way++) 
-    {
-      if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
-      { 
-        //printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",addr, m_vtt_entry[set_index][way].tag, tag);
-        m_vtt_hits+=1;
-        return true;
-      }
-    }     
-    return false;
-  }
-  void get_vtt_sub_stats(struct linebacker_sub_stats &vss) {
-    vss.vtt_accesses+=m_vtt_accesses;
-    vss.vtt_hits+=m_vtt_hits;
-  }
+  victim_tag_table();
+  void init(tag_arr init_value);
+  address_type get_way(address_type set_index);
+  address_type get_tag(address_type addr);
+  address_type get_index(address_type addr);
+  void fill_tag(address_type evicted_tag, address_type set_index);
+  bool tag_check(address_type addr);
+  void get_vtt_sub_stats(struct linebacker_sub_stats &vss);
 };
+
 ////////LOAD MONITOR///////
 #define LOAD_MONITOR_ENTRIES 32
 struct load_monitor_entry {
@@ -2413,7 +2359,7 @@ struct load_monitor_entry {
   std::bitset<2> valid; // 2-bit valid
   
 };
-class load_monitor{
+class load_monitor {
   public:
 
    load_monitor();
