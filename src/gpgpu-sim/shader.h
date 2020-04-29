@@ -2337,7 +2337,7 @@ class victim_tag_table
   }
   void fill_tag(address_type evicted_tag, address_type set_index){
 
-    address_type tag = evicted_tag >> m_idx_bits; //L1d evicted tag contains tag+index
+    address_type tag = evicted_tag >> (m_idx_bits + m_bo_bits); //L1d evicted tag contains 32 bit tag
     unsigned way = get_way(set_index);
     m_vtt_entry[set_index][way].valid = 1;
     m_vtt_entry[set_index][way].tag = tag;
@@ -2366,7 +2366,8 @@ struct linebacker_sub_stats {
   unsigned long long lm_accesses;
   unsigned long long lm_misses;
   unsigned long long lm_hits;
- 
+
+  unsigned long long vtt_accesses;
   unsigned long long vtt_hits;
   unsigned long long vtt_misses;
 
