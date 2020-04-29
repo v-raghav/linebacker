@@ -2302,11 +2302,16 @@ class victim_tag_table
   std::vector<std::vector<tag_arr>> m_vtt_entry; //( SETS ), vector<tag_arr> (WAYS)) ; 
   unsigned m_bo_bits;
   unsigned m_idx_bits;
+  unsigned m_vtt_hits;
+  unsigned m_vtt_accesses;
+
   
   victim_tag_table() {
       m_bo_bits = ceil(log2(BLOCK_SIZE)); 
       m_idx_bits = ceil(log2(SETS));
       m_vtt_entry.reserve(SETS);
+      m_vtt_hits = 0;
+      m_vtt_accesses = 0;
       for(unsigned set = 0; set < SETS; set++)
         m_vtt_entry[set].resize(WAYS);
       init({0,0b0});
@@ -2345,18 +2350,22 @@ class victim_tag_table
 
   }
   bool tag_check(address_type addr){
-    bool hit = true;
     unsigned set_index = get_index(addr);
     address_type tag = get_tag(addr);
+    m_vtt_accesses+=1;
     for (unsigned way = 0; way < WAYS; way++) 
     {
       if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
       {
-        hit = true;
-        return hit;
+        m_vtt_hits+=1;
+        return true;
       }
     }     
     return false;
+  }
+  void get_vtt_sub_stats(struct linebacker_sub_stats &vss) {
+    vss.vtt_accesses+=m_vtt_accesses;
+    vss.vtt_hits+=m_vtt_hits;
   }
 };
 

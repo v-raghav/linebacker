@@ -3610,6 +3610,7 @@ void shader_core_ctx::get_L1T_sub_stats(struct cache_sub_stats &css) const {
 }
 void shader_core_ctx::get_linebacker_sub_stats(struct linebacker_sub_stats &lss) const{
   m_load_monitor->get_lm_sub_stats(lss);
+  m_vtt->get_vtt_sub_stats(lss);
 }
 void shader_core_ctx::get_icnt_power_stats(long &n_simt_to_mem,
                                            long &n_mem_to_simt) const {
