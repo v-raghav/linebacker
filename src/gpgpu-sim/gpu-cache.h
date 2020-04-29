@@ -1421,6 +1421,9 @@ class data_cache : public baseline_cache {
   virtual enum cache_request_status access(new_addr_type addr, mem_fetch *mf,
                                            unsigned time,
                                            std::list<cache_event> &events);
+  virtual enum cache_request_status access(new_addr_type addr, mem_fetch *mf,
+                                           unsigned time,
+                                           std::list<cache_event> &events,bool vtt_hit);                                           
 
  protected:
   data_cache(const char *name, cache_config &config, int core_id, int type_id,
@@ -1451,7 +1454,12 @@ class data_cache : public baseline_cache {
                                               unsigned cache_index,
                                               mem_fetch *mf, unsigned time,
                                               std::list<cache_event> &events);
-
+ enum cache_request_status process_tag_probe(bool wr,
+                                              enum cache_request_status status,
+                                              new_addr_type addr,
+                                              unsigned cache_index,
+                                              mem_fetch *mf, unsigned time,
+                                              std::list<cache_event> &events, bool vtt_hit);
  protected:
   mem_fetch_allocator *m_memfetch_creator;
 
@@ -1555,6 +1563,9 @@ class l1_cache : public data_cache {
   virtual enum cache_request_status access(new_addr_type addr, mem_fetch *mf,
                                            unsigned time,
                                            std::list<cache_event> &events);
+  virtual enum cache_request_status access(new_addr_type addr, mem_fetch *mf,
+                                           unsigned time,
+                                           std::list<cache_event> &events,bool vtt_hit);                                           
 
  protected:
   l1_cache(const char *name, cache_config &config, int core_id, int type_id,

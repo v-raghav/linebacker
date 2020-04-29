@@ -1788,14 +1788,23 @@ void ldst_unit::L1_latency_queue_cycle() {
     if ((l1_latency_queue[j][0]) != NULL) {
       mem_fetch *mf_next = l1_latency_queue[j][0];
       std::list<cache_event> events;
+
+      bool vtt_hit = false;
+      // if(!mf_next()->isatomic()) {  // Don't mess with atomics
+      //   vtt_hit=m_vtt->tag_check(mf_next->get_addr());
+      // }
       enum cache_request_status status =
           m_L1D->access(mf_next->get_addr(), mf_next,
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
-                        events);
+                        events,vtt_hit);
         
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
+
+   
+
+     
 
       if (status == HIT) {
         assert(!read_sent);
@@ -1831,7 +1840,12 @@ void ldst_unit::L1_latency_queue_cycle() {
         }
 
         if (!write_sent) delete mf_next;
-        m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
+        //don't recount the vtt hits as cache hits
+        if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD && vtt_hit == false ) {
+
+           m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
+
+        }   
 
       } else if (status == RESERVATION_FAIL) {
         assert(!read_sent);
@@ -1840,7 +1854,7 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
         //If miss check hit in VTT and update LM
-        if(m_vtt->tag_check(mf_next->get_addr())) {
+        if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD && m_vtt->tag_check(mf_next->get_addr())) {
           m_lm->insert(mf_next->get_pc(),false);
         }
       }
