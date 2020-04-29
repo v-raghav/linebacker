@@ -4380,25 +4380,25 @@ victim_tag_table::victim_tag_table() {
   m_vtt_hits = 0;
   m_vtt_accesses = 0;
   for(unsigned set = 0; set < SETS; set++)
-    m_vtt_entry[set].resize(WAYS);
+    m_vtt_entry[set].resize(WAYS*N_VP);
   init({0,0b0});
 }
 
 void victim_tag_table::init(tag_arr init_value) {
   for(unsigned set = 0; set < SETS; set++)
   {
-    for(unsigned way = 0; way < WAYS; way++)
+    for(unsigned way = 0; way < WAYS * N_VP; way++)
       m_vtt_entry[set][way] = init_value;
   }
 }
 
-address_type victim_tag_table::get_way(address_type set_index) { 
-  for (unsigned way = 0; way < WAYS; way++) {
+address_type victim_tag_table::get_way(address_type set_index, unsigned Nvp) { 
+  for (unsigned way = 0; way < WAYS * Nvp; way++) {
     if(m_vtt_entry[set_index][way].valid == 0)
       return way;
   }
   srand(time(0)); 
-  return (rand() % WAYS);
+  return (rand() % WAYS*Nvp);
 }
  
  address_type victim_tag_table::get_tag(address_type addr) {
@@ -4409,19 +4409,19 @@ address_type victim_tag_table::get_way(address_type set_index) {
   return (addr >> m_bo_bits) & (SETS-1);
 }
 
- void victim_tag_table::fill_tag(address_type evicted_tag, address_type set_index) {
+ void victim_tag_table::fill_tag(address_type evicted_tag, address_type set_index,unsigned Nvp) {
   address_type tag = evicted_tag >> (m_idx_bits + m_bo_bits); //L1d evicted tag contains 32 bit tag
-  unsigned way = get_way(set_index);
+  unsigned way = get_way(set_index, Nvp);
   m_vtt_entry[set_index][way].valid = 1;
   m_vtt_entry[set_index][way].tag = tag;
   //update_lru(set_index);
 }
 
-bool victim_tag_table::tag_check(address_type addr) {
+bool victim_tag_table::tag_check(address_type addr, unsigned Nvp) {
    unsigned set_index = get_index(addr);
    address_type tag = get_tag(addr);
    m_vtt_accesses+=1;
-   for (unsigned way = 0; way < WAYS; way++) 
+   for (unsigned way = 0; way < WAYS * Nvp; way++) 
    {
      if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
      { 

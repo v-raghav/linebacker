@@ -2318,7 +2318,7 @@ struct linebacker_sub_stats {
 };
 
 /////// Victim Tag table///////
-#define N_VP 4 //number of VTT partitions
+#define N_VP 8 //number of VTT partitions
 #define WAYS 4 //4 way associative
 #define SETS 48 //total number of sets
 #define BLOCK_SIZE 128 //cache line size
@@ -2341,11 +2341,11 @@ class victim_tag_table {
   
   victim_tag_table();
   void init(tag_arr init_value);
-  address_type get_way(address_type set_index);
+  address_type get_way(address_type set_index,unsigned Nvp=1);
   address_type get_tag(address_type addr);
   address_type get_index(address_type addr);
-  void fill_tag(address_type evicted_tag, address_type set_index);
-  bool tag_check(address_type addr);
+  void fill_tag(address_type evicted_tag, address_type set_index,unsigned Nvp=1);
+  bool tag_check(address_type addr,unsigned Nvp=1);
   void get_vtt_sub_stats(struct linebacker_sub_stats &vss);
 };
 
