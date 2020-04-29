@@ -2301,6 +2301,7 @@ struct linebacker_sub_stats {
     lm_hits = 0;
     vtt_hits = 0;
     vtt_misses = 0;
+    vtt_accesses=0;
   }
   linebacker_sub_stats &operator+=(const linebacker_sub_stats &lss) {
     ///
@@ -2311,6 +2312,7 @@ struct linebacker_sub_stats {
     lm_hits += lss.lm_hits;
     vtt_hits += lss.vtt_hits;
     vtt_misses += lss.vtt_misses;
+    vtt_accesses+= lss.vtt_accesses;
     return *this;
   }
 };

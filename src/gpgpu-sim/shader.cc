@@ -2757,6 +2757,9 @@ void gpgpu_sim::linebacker_print_stats(FILE *fout) const {
   fprintf(fout, "Load Monitor:\n");
   fprintf(fout, "\tTotal load monitor hits = %llu\n", total_lss.lm_hits);
   fprintf(fout, "\tTotal load monitor misses = %llu\n", total_lss.lm_misses);
+  fprintf(fout, "\tTotal victim tag table accesses = %llu\n", total_lss.vtt_accesses);
+  fprintf(fout, "\tTotal victim tag table hits = %llu\n", total_lss.vtt_hits);
+
 
 }
 void gpgpu_sim::shader_print_l1_miss_stat(FILE *fout) const {
