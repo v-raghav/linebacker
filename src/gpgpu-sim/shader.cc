@@ -4415,7 +4415,7 @@ void load_monitor::update(unsigned period_number){
 void load_monitor::print_state(){
      printf("Core 0 Stats for LM \n");
      for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-       printf("LM[%d] Hits : %u, Misses :%u , Valid: %x\n",i,m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, m_lm_entry[i].valid );
+       printf("LM[%d] Hits : %u, Misses :%u , Valid: %x\n",i,m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, (unsigned)m_lm_entry[i].valid );
 
       }
 }
