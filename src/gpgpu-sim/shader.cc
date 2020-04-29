@@ -3242,13 +3242,14 @@ void shader_core_config::set_pipeline_latency() {
 
 void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
-  if(get_gpu()->gpu_sim_cycle() == MONITORING_PERIOD) {
+
+  if(this->get_gpu()->gpu_sim_cycle() == MONITORING_PERIOD) {
     if(m_sid == 0)
       m_load_monitor->print_state();
     m_load_monitor->update(0);
    
   }
-  elif(get_gpu()->gpu_sim_cycle() == MONITORING_PERIOD) {
+  else if(this->get_gpu()->gpu_sim_cycle() == MONITORING_PERIOD * NUM_PERIODS) {
     m_vtt->flush();
     if(m_sid == 0)
      m_load_monitor->print_state();
@@ -4414,7 +4415,7 @@ void load_monitor::update(unsigned period_number){
 void load_monitor::print_state(){
      printf("Core 0 Stats for LM \n");
      for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-       printf("LM[%d] Hits : %u, Misses :%u , Valid: %x\n",m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, m_lm_entry[hashed_pc].valid );
+       printf("LM[%d] Hits : %u, Misses :%u , Valid: %x\n",m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, m_lm_entry[i].valid );
 
       }
 }
