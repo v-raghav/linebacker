@@ -4355,7 +4355,6 @@ void load_monitor::insert(address_type pc, bool hit) {
   if(hit)
     m_lm_entry[hashed_pc].hit_count++;
   else {
-    printf("hi\n");
     m_lm_entry[hashed_pc].miss_count++;
   } 
 }   
