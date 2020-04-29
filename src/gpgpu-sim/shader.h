@@ -2283,7 +2283,41 @@ class perfect_memory_interface : public mem_fetch_interface {
 
 
 inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
+//stats for various linebacker components
+struct linebacker_sub_stats {
+ 
+  unsigned long long lm_accesses;
+  unsigned long long lm_misses;
+  unsigned long long lm_hits;
 
+  unsigned long long vtt_accesses;
+  unsigned long long vtt_hits;
+  unsigned long long vtt_misses;
+
+  linebacker_sub_stats() { clear(); }
+  void clear() {
+    lm_accesses = 0;
+    lm_misses = 0;
+    lm_hits = 0;
+    vtt_hits = 0;
+    vtt_misses = 0;
+    vtt_accesses=0;
+  }
+  linebacker_sub_stats &operator+=(const linebacker_sub_stats &lss) {
+    ///
+    /// Overloading += operator to easily accumulate stats
+    ///
+    lm_accesses += lss.lm_accesses;
+    lm_misses += lss.lm_misses;
+    lm_hits += lss.lm_hits;
+    vtt_hits += lss.vtt_hits;
+    vtt_misses += lss.vtt_misses;
+    vtt_accesses+= lss.vtt_accesses;
+    return *this;
+  }
+};
+
+/////// Victim Tag table///////
 #define N_VP 4 //number of VTT partitions
 #define WAYS 4 //4 way associative
 #define SETS 48 //total number of sets
@@ -2296,101 +2330,26 @@ struct tag_arr
    
 };
 
-class victim_tag_table 
-{
+class victim_tag_table {
+
   public:
   std::vector<std::vector<tag_arr>> m_vtt_entry; //( SETS ), vector<tag_arr> (WAYS)) ; 
   unsigned m_bo_bits;
   unsigned m_idx_bits;
+  unsigned m_vtt_hits;
+  unsigned m_vtt_accesses;
   
-  victim_tag_table() {
-      m_bo_bits = ceil(log2(BLOCK_SIZE)); 
-      m_idx_bits = ceil(log2(SETS));
-      m_vtt_entry.reserve(SETS);
-      for(unsigned set = 0; set < SETS; set++)
-        m_vtt_entry[set].resize(WAYS);
-      init({0,0b0});
-  }
-  void init(tag_arr init_value){
-    for(unsigned set = 0; set < SETS; set++)
-    {
-      for(unsigned way = 0; way < WAYS; way++)
-        m_vtt_entry[set][way] = init_value;
-    }
-  }
-  address_type get_way(address_type set_index)
-  {
-    for (unsigned way = 0; way < WAYS; way++) {
-      if(m_vtt_entry[set_index][way].valid == 0)
-        return way;
-    }
-    srand(time(0)); 
-    return (rand() % 4);
-
-  }
-  
-  address_type get_tag(address_type addr){
-    return (addr >> (m_bo_bits + m_idx_bits));
-  }
-  address_type get_index(address_type addr){
-    return (addr >> m_bo_bits) & (SETS-1);
-  }
-  void fill_tag(address_type evicted_tag, address_type set_index){
-
-    address_type tag = evicted_tag >> m_idx_bits; //L1d evicted tag contains tag+index
-    unsigned way = get_way(set_index);
-    m_vtt_entry[set_index][way].valid = 1;
-    m_vtt_entry[set_index][way].tag = tag;
-    //update_lru(set_index);
-
-  }
-  bool tag_check(address_type addr){
-    bool hit = 0;
-    unsigned set_index = get_index(addr);
-    address_type tag = get_tag(addr);
-    for (unsigned way = 0; way < WAYS; way++) 
-    {
-      if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
-      {
-        hit = 1;
-        break;
-      }
-    }     
-    return hit;
-  }
+  victim_tag_table();
+  void init(tag_arr init_value);
+  address_type get_way(address_type set_index);
+  address_type get_tag(address_type addr);
+  address_type get_index(address_type addr);
+  void fill_tag(address_type evicted_tag, address_type set_index);
+  bool tag_check(address_type addr);
+  void get_vtt_sub_stats(struct linebacker_sub_stats &vss);
 };
 
-//stats for various linebacker components
-struct linebacker_sub_stats {
- 
-  unsigned long long lm_accesses;
-  unsigned long long lm_misses;
-  unsigned long long lm_hits;
- 
-  unsigned long long vtt_hits;
-  unsigned long long vtt_misses;
-
-  linebacker_sub_stats() { clear(); }
-  void clear() {
-    lm_accesses = 0;
-    lm_misses = 0;
-    lm_hits = 0;
-    vtt_hits = 0;
-    vtt_misses = 0;
-  }
-  linebacker_sub_stats &operator+=(const linebacker_sub_stats &lss) {
-    ///
-    /// Overloading += operator to easily accumulate stats
-    ///
-    lm_accesses += lss.lm_accesses;
-    lm_misses += lss.lm_misses;
-    lm_hits += lss.lm_hits;
-    vtt_hits += lss.vtt_hits;
-    vtt_misses += lss.vtt_misses;
-    return *this;
-  }
-};
-
+////////LOAD MONITOR///////
 #define LOAD_MONITOR_ENTRIES 32
 struct load_monitor_entry {
 
@@ -2400,7 +2359,7 @@ struct load_monitor_entry {
   std::bitset<2> valid; // 2-bit valid
   
 };
-class load_monitor{
+class load_monitor {
   public:
 
    load_monitor();

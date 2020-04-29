@@ -1793,14 +1793,7 @@ void ldst_unit::L1_latency_queue_cycle() {
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
                         events);
-          //saumya
-          
-          //unsigned vtt_tag = m_vtt->get_tag(mf_next->get_addr());
-          /*
-          if(flag == 0)
-            printf("Mem_addr = %x,VTT index = %x, VTT tag = %x\n",mf_next->get_addr(), m_vtt->get_index(mf_next->get_addr()), m_vtt->get_tag(mf_next->get_addr()) );
-          flag ++;
-          */
+        
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
 
@@ -1846,6 +1839,10 @@ void ldst_unit::L1_latency_queue_cycle() {
       } else {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
+        //If miss check hit in VTT and update LM
+        if(m_vtt->tag_check(mf_next->get_addr())) {
+          m_lm->insert(mf_next->get_pc(),false);
+        }
       }
      
         
@@ -2759,6 +2756,9 @@ void gpgpu_sim::linebacker_print_stats(FILE *fout) const {
   fprintf(fout, "Load Monitor:\n");
   fprintf(fout, "\tTotal load monitor hits = %llu\n", total_lss.lm_hits);
   fprintf(fout, "\tTotal load monitor misses = %llu\n", total_lss.lm_misses);
+  fprintf(fout, "\tTotal victim tag table accesses = %llu\n", total_lss.vtt_accesses);
+  fprintf(fout, "\tTotal victim tag table hits = %llu\n", total_lss.vtt_hits);
+
 
 }
 void gpgpu_sim::shader_print_l1_miss_stat(FILE *fout) const {
@@ -3612,6 +3612,7 @@ void shader_core_ctx::get_L1T_sub_stats(struct cache_sub_stats &css) const {
 }
 void shader_core_ctx::get_linebacker_sub_stats(struct linebacker_sub_stats &lss) const{
   m_load_monitor->get_lm_sub_stats(lss);
+  m_vtt->get_vtt_sub_stats(lss);
 }
 void shader_core_ctx::get_icnt_power_stats(long &n_simt_to_mem,
                                            long &n_mem_to_simt) const {
@@ -4353,8 +4354,9 @@ void load_monitor::insert(address_type pc, bool hit) {
     m_lm_entry[hashed_pc].PC = pc;
   if(hit)
     m_lm_entry[hashed_pc].hit_count++;
-  else
+  else {
     m_lm_entry[hashed_pc].miss_count++;
+  } 
 }   
 
 void load_monitor::get_lm_sub_stats(struct linebacker_sub_stats &lss) {
@@ -4369,4 +4371,69 @@ void load_monitor::get_lm_sub_stats(struct linebacker_sub_stats &lss) {
 struct load_monitor_entry load_monitor::get_entry(address_type pc){
   unsigned hashed_pc=get_hpc(pc);
   return m_lm_entry[hashed_pc];
+}
+
+victim_tag_table::victim_tag_table() {
+  m_bo_bits = ceil(log2(BLOCK_SIZE)); 
+  m_idx_bits = ceil(log2(SETS));
+  m_vtt_entry.reserve(SETS);
+  m_vtt_hits = 0;
+  m_vtt_accesses = 0;
+  for(unsigned set = 0; set < SETS; set++)
+    m_vtt_entry[set].resize(WAYS);
+  init({0,0b0});
+}
+
+void victim_tag_table::init(tag_arr init_value) {
+  for(unsigned set = 0; set < SETS; set++)
+  {
+    for(unsigned way = 0; way < WAYS; way++)
+      m_vtt_entry[set][way] = init_value;
+  }
+}
+
+address_type victim_tag_table::get_way(address_type set_index) { 
+  for (unsigned way = 0; way < WAYS; way++) {
+    if(m_vtt_entry[set_index][way].valid == 0)
+      return way;
+  }
+  srand(time(0)); 
+  return (rand() % WAYS);
+}
+ 
+ address_type victim_tag_table::get_tag(address_type addr) {
+  return (addr >> (m_bo_bits + m_idx_bits));
+ }
+
+ address_type victim_tag_table::get_index(address_type addr) {
+  return (addr >> m_bo_bits) & (SETS-1);
+}
+
+ void victim_tag_table::fill_tag(address_type evicted_tag, address_type set_index) {
+  address_type tag = evicted_tag >> (m_idx_bits + m_bo_bits); //L1d evicted tag contains 32 bit tag
+  unsigned way = get_way(set_index);
+  m_vtt_entry[set_index][way].valid = 1;
+  m_vtt_entry[set_index][way].tag = tag;
+  //update_lru(set_index);
+}
+
+bool victim_tag_table::tag_check(address_type addr) {
+   unsigned set_index = get_index(addr);
+   address_type tag = get_tag(addr);
+   m_vtt_accesses+=1;
+   for (unsigned way = 0; way < WAYS; way++) 
+   {
+     if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
+     { 
+       //printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",addr, m_vtt_entry[set_index][way].tag, tag);
+       m_vtt_hits+=1;
+       return true;
+     }
+   }     
+   return false;
+}
+
+ void victim_tag_table::get_vtt_sub_stats(struct linebacker_sub_stats &vss) {
+   vss.vtt_accesses+=m_vtt_accesses;
+   vss.vtt_hits+=m_vtt_hits;
 }
