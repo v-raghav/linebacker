@@ -2319,7 +2319,7 @@ struct linebacker_sub_stats {
 
 /////// Victim Tag table///////
 #define N_VP 4 //number of VTT partitions
-#define WAYS 20000 // perfect VTT
+#define WAYS 4 //4 way associative
 #define SETS 48 //total number of sets
 #define BLOCK_SIZE 128 //cache line size
 
@@ -2391,7 +2391,7 @@ class victim_tag_table
     {
       if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
       { 
-        printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",addr, m_vtt_entry[set_index][way].tag, tag);
+        //printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",addr, m_vtt_entry[set_index][way].tag, tag);
         m_vtt_hits+=1;
         return true;
       }
