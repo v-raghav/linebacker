@@ -4354,8 +4354,10 @@ void load_monitor::insert(address_type pc, bool hit) {
     m_lm_entry[hashed_pc].PC = pc;
   if(hit)
     m_lm_entry[hashed_pc].hit_count++;
-  else
+  else {
+    print("hi\n");
     m_lm_entry[hashed_pc].miss_count++;
+  } 
 }   
 
 void load_monitor::get_lm_sub_stats(struct linebacker_sub_stats &lss) {
