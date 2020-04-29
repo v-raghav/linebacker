@@ -2283,7 +2283,39 @@ class perfect_memory_interface : public mem_fetch_interface {
 
 
 inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
+//stats for various linebacker components
+struct linebacker_sub_stats {
+ 
+  unsigned long long lm_accesses;
+  unsigned long long lm_misses;
+  unsigned long long lm_hits;
 
+  unsigned long long vtt_accesses;
+  unsigned long long vtt_hits;
+  unsigned long long vtt_misses;
+
+  linebacker_sub_stats() { clear(); }
+  void clear() {
+    lm_accesses = 0;
+    lm_misses = 0;
+    lm_hits = 0;
+    vtt_hits = 0;
+    vtt_misses = 0;
+  }
+  linebacker_sub_stats &operator+=(const linebacker_sub_stats &lss) {
+    ///
+    /// Overloading += operator to easily accumulate stats
+    ///
+    lm_accesses += lss.lm_accesses;
+    lm_misses += lss.lm_misses;
+    lm_hits += lss.lm_hits;
+    vtt_hits += lss.vtt_hits;
+    vtt_misses += lss.vtt_misses;
+    return *this;
+  }
+};
+
+/////// Victim Tag table///////
 #define N_VP 4 //number of VTT partitions
 #define WAYS 20000 //4 way associative
 #define SETS 48 //total number of sets
@@ -2368,39 +2400,7 @@ class victim_tag_table
     vss.vtt_hits+=m_vtt_hits;
   }
 };
-
-//stats for various linebacker components
-struct linebacker_sub_stats {
- 
-  unsigned long long lm_accesses;
-  unsigned long long lm_misses;
-  unsigned long long lm_hits;
-
-  unsigned long long vtt_accesses;
-  unsigned long long vtt_hits;
-  unsigned long long vtt_misses;
-
-  linebacker_sub_stats() { clear(); }
-  void clear() {
-    lm_accesses = 0;
-    lm_misses = 0;
-    lm_hits = 0;
-    vtt_hits = 0;
-    vtt_misses = 0;
-  }
-  linebacker_sub_stats &operator+=(const linebacker_sub_stats &lss) {
-    ///
-    /// Overloading += operator to easily accumulate stats
-    ///
-    lm_accesses += lss.lm_accesses;
-    lm_misses += lss.lm_misses;
-    lm_hits += lss.lm_hits;
-    vtt_hits += lss.vtt_hits;
-    vtt_misses += lss.vtt_misses;
-    return *this;
-  }
-};
-
+////////LOAD MONITOR///////
 #define LOAD_MONITOR_ENTRIES 32
 struct load_monitor_entry {
 
