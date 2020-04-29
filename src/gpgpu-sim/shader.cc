@@ -1793,14 +1793,7 @@ void ldst_unit::L1_latency_queue_cycle() {
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
                         events);
-          //saumya
-          
-          //unsigned vtt_tag = m_vtt->get_tag(mf_next->get_addr());
-          /*
-          if(flag == 0)
-            printf("Mem_addr = %x,VTT index = %x, VTT tag = %x\n",mf_next->get_addr(), m_vtt->get_index(mf_next->get_addr()), m_vtt->get_tag(mf_next->get_addr()) );
-          flag ++;
-          */
+        
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
 
@@ -1846,6 +1839,11 @@ void ldst_unit::L1_latency_queue_cycle() {
       } else {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
+        //If miss check hit in VTT and update LM
+     
+        if(m_vtt->tag_check(mf_next->get_addr())) {
+          m_lm->insert(mf_next->get_pc(),false);
+        }
       }
      
         

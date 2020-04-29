@@ -2285,7 +2285,7 @@ class perfect_memory_interface : public mem_fetch_interface {
 inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
 
 #define N_VP 4 //number of VTT partitions
-#define WAYS 4 //4 way associative
+#define WAYS 20000 //4 way associative
 #define SETS 48 //total number of sets
 #define BLOCK_SIZE 128 //cache line size
 
@@ -2325,7 +2325,7 @@ class victim_tag_table
         return way;
     }
     srand(time(0)); 
-    return (rand() % 4);
+    return (rand() % WAYS);
 
   }
   
@@ -2345,18 +2345,18 @@ class victim_tag_table
 
   }
   bool tag_check(address_type addr){
-    bool hit = 0;
+    bool hit = true;
     unsigned set_index = get_index(addr);
     address_type tag = get_tag(addr);
     for (unsigned way = 0; way < WAYS; way++) 
     {
       if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
       {
-        hit = 1;
-        break;
+        hit = true;
+        return hit;
       }
     }     
-    return hit;
+    return false;
   }
 };
 
