@@ -2390,7 +2390,8 @@ class victim_tag_table
     for (unsigned way = 0; way < WAYS; way++) 
     {
       if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
-      {
+      { 
+        printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x",addr, m_vtt_entry[set_index][way].tag, tag);
         m_vtt_hits+=1;
         return true;
       }

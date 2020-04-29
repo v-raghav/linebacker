@@ -1840,7 +1840,6 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
         //If miss check hit in VTT and update LM
-     
         if(m_vtt->tag_check(mf_next->get_addr())) {
           m_lm->insert(mf_next->get_pc(),false);
         }
