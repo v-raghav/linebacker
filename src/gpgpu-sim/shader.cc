@@ -4405,7 +4405,7 @@ void load_monitor::update(unsigned period_number){
   
     for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
       if ( m_lm_entry[i].hit_count +  m_lm_entry[i].miss_count > HIT_THRESHOLD ) {
-           m_lm_entry[hashed_pc].valid.set(period_number);
+           m_lm_entry[i].valid.set(period_number);
       }
       m_lm_entry[i].hit_count=0;
       m_lm_entry[i].miss_count=0;

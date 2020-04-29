@@ -2348,6 +2348,7 @@ class victim_tag_table {
   void fill_tag(address_type evicted_tag, address_type set_index,unsigned Nvp=1);
   bool tag_check(address_type addr,unsigned Nvp=1);
   void get_vtt_sub_stats(struct linebacker_sub_stats &vss);
+  void flush();
 };
 
 ////////LOAD MONITOR///////
@@ -2365,7 +2366,7 @@ class load_monitor {
   public:
 
    load_monitor();
-   void init(load_monitor_entry entry_value, bool reset_bits=true);
+   void init(load_monitor_entry entry_value);
    void insert(address_type pc, bool hit);
    struct load_monitor_entry get_entry(address_type pc);
    void get_lm_sub_stats(struct linebacker_sub_stats &lss);
