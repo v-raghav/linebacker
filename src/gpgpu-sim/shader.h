@@ -2310,9 +2310,9 @@ struct linebacker_sub_stats {
     lm_accesses += lss.lm_accesses;
     lm_misses += lss.lm_misses;
     lm_hits += lss.lm_hits;
-    vtt_hits += vtt.vtt_hits;
-    vtt_misses += vtt.vtt_misses;
-    vtt_accesses+= vtt.vtt_accesses;
+    vtt_hits += lss.vtt_hits;
+    vtt_misses += lss.vtt_misses;
+    vtt_accesses+= lss.vtt_accesses;
     return *this;
   }
 };
