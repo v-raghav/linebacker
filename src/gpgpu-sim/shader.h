@@ -2375,6 +2375,7 @@ class load_monitor {
    address_type get_hpc(address_type pc);
    void update(unsigned period_number);
    void print_state();
+   bool check_locality(address_type hpc);
 
    private:
    std::vector<load_monitor_entry> m_lm_entry;

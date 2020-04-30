@@ -2469,10 +2469,18 @@ void ldst_unit::cycle() {
             //Fill VTT
             if(evicted_index != (unsigned)-1)
             {
-              //chosen_way = m_vtt->get_way(evicted_index);
-              m_vtt->fill_tag(evicted_tag, evicted_index);
-              //chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
-              //printf("Evicted_tag = %x, VTT[%lu][%lu] = %x\n", evicted_tag, evicted_index, chosen_way,chosen_tag);
+              if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD) {
+                //chosen_way = m_vtt->get_way(evicted_index);
+                m_vtt->fill_tag(evicted_tag, evicted_index);
+                //chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
+                //printf("Evicted_tag = %x, VTT[%lu][%lu] = %x\n", evicted_tag, evicted_index, chosen_way,chosen_tag);
+
+              }
+              else {
+                if(m_lm->check_locality(hpc)) {
+                   m_vtt->fill_tag(evicted_tag, evicted_index);
+                }
+              }
             }
             
             m_response_fifo.pop_front();
@@ -4425,6 +4433,12 @@ void load_monitor::print_state(){
        printf("LM[%d] Hits : %u, Misses :%u , Valid: %u\n",i,m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, (int)m_lm_entry[i].valid.to_ulong() );
 
       }
+}
+bool load_monitor::check_locality(address_type hpc) {
+  if(m_lm_entry[hashed_pc].valid == 0b11)
+    return true;
+  else
+    return false;    
 }
 
 victim_tag_table::victim_tag_table() {
