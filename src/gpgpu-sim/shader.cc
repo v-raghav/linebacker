@@ -3245,15 +3245,17 @@ void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
   
   if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD) {
-    if(m_core->get_sid() == 0)
+    if(m_sid == 0){
       m_load_monitor->print_state();
+    }  
     m_load_monitor->update(0);
    
   }
   else if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD * NUM_PERIODS) {
     m_vtt->flush();
-    if(m_core->get_sid() == 0)
+    if(m_sid == 0) {
      m_load_monitor->print_state();
+    } 
     m_load_monitor->update(1);
 
   }
