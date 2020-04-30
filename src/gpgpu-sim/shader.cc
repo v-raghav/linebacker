@@ -4435,7 +4435,7 @@ void load_monitor::print_state(){
       }
 }
 bool load_monitor::check_locality(address_type hpc) {
-  if(m_lm_entry[hashed_pc].valid == 0b11)
+  if(m_lm_entry[hpc].valid == 0b11)
     return true;
   else
     return false;    
