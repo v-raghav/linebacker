@@ -30,6 +30,7 @@
 #include <assert.h>
 #include "gpu-sim.h"
 #include "stat-tool.h"
+#include "shader.h"
 
 // used to allocate memory that is large enough to adapt the changes in cache
 // size across kernels
@@ -338,7 +339,7 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
 //Overloaded
 enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
                                            mem_access_sector_mask_t mask,
-                                           address_type &evicted_index, address_type &evicted_tag,
+                                           address_type &evicted_index, address_type &evicted_tag, address_type &hpc,
                                            bool probe_mode,
                                            mem_fetch *mf) const {
   // assert( m_config.m_write_policy == READ_ONLY );
@@ -398,6 +399,7 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
         }
         evicted_index=set_index;
         evicted_tag=line->m_tag;
+        hpc=line->m_hpc;
       }
     }
   }
@@ -507,20 +509,24 @@ void tag_array::fill(new_addr_type addr, unsigned time,
   m_lines[idx]->fill(time, mask);
 }
 //Overloaded
-void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf, address_type &evicted_index, address_type &evicted_tag) {
-  fill(addr, time, mf->get_access_sector_mask(), evicted_index, evicted_tag);
+void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf,
+                     address_type &evicted_index, address_type &evicted_tag,address_type &hpc) {
+                 
+  fill(addr, time, mf->get_access_sector_mask(),mf,  evicted_index, evicted_tag, hpc);
 }
 
 void tag_array::fill(new_addr_type addr, unsigned time,
-                     mem_access_sector_mask_t mask, address_type &evicted_index, address_type &evicted_tag) {
+                     mem_access_sector_mask_t mask, mem_fetch *mf,
+                     address_type &evicted_index, address_type &evicted_tag,address_type &hpc ) {
   // assert( m_config.m_alloc_policy == ON_FILL );
   unsigned idx;
-  enum cache_request_status status = probe(addr, idx, mask,evicted_index, evicted_tag);
+  enum cache_request_status status = probe(addr, idx, mask,evicted_index, evicted_tag,hpc,false, mf);
   // assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented
   // redundant memory request
   if (status == MISS)
+    address_type new_hpc=mf->get_pc() & (LOAD_MONITOR_ENTRIES-1);
     m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr), time,
-                           mask);
+                           mask, new_hpc);
   else if (status == SECTOR_MISS) {
     assert(m_config.m_cache_type == SECTOR);
     ((sector_cache_block *)m_lines[idx])->allocate_sector(time, mask);
@@ -1198,7 +1204,8 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
 }
 
 
-void baseline_cache::fill(mem_fetch *mf, unsigned time, address_type &evicted_index, address_type &evicted_tag) {
+void baseline_cache::fill(mem_fetch *mf, unsigned time, address_type &evicted_index,
+                           address_type &evicted_tag, address_type &hpc) {
   if (m_config.m_mshr_type == SECTOR_ASSOC) {
     assert(mf->get_original_mf());
     extra_mf_fields_lookup::iterator e =
@@ -1225,7 +1232,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time, address_type &evicted_in
   if (m_config.m_alloc_policy == ON_MISS)
     m_tag_array->fill(e->second.m_cache_index, time, mf);
   else if (m_config.m_alloc_policy == ON_FILL) {
-    m_tag_array->fill(e->second.m_block_addr, time, mf,evicted_index,evicted_tag);
+    m_tag_array->fill(e->second.m_block_addr, time, mf,evicted_index,evicted_tag,hpc);
     if (m_config.is_streaming()) m_tag_array->remove_pending_line(mf);
   } else
     abort();

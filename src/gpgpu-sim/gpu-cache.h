@@ -103,11 +103,12 @@ struct cache_block_t {
   cache_block_t() {
     m_tag = 0;
     m_block_addr = 0;
+    m_hpc=0;
   }
 
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
                         unsigned time,
-                        mem_access_sector_mask_t sector_mask) = 0;
+                        mem_access_sector_mask_t sector_mask, address_type new_hpc) = 0;
   virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask) = 0;
 
   virtual bool is_invalid_line() = 0;
@@ -137,6 +138,7 @@ struct cache_block_t {
 
   new_addr_type m_tag;
   new_addr_type m_block_addr;
+  address_type m_hpc;
 };
 
 struct line_cache_block : public cache_block_t {
@@ -150,8 +152,9 @@ struct line_cache_block : public cache_block_t {
     m_readable = true;
   }
   void allocate(new_addr_type tag, new_addr_type block_addr, unsigned time,
-                mem_access_sector_mask_t sector_mask) {
+                mem_access_sector_mask_t sector_mask,address_type new_hpc) {
     m_tag = tag;
+    m_hpc=new_hpc;
     m_block_addr = block_addr;
     m_alloc_time = time;
     m_last_access_time = time;
@@ -824,7 +827,7 @@ class tag_array {
   //Overloaded                                
   enum cache_request_status probe(new_addr_type addr, unsigned &idx,
                                   mem_access_sector_mask_t mask,
-                                  address_type &evicted_index, address_type &evicted_tag,
+                                  address_type &evicted_index, address_type &evicted_tag, address_type &hpc,
                                   bool probe_mode = false,
                                   mem_fetch *mf = NULL) const;                                 
 
@@ -837,8 +840,9 @@ class tag_array {
   void fill(new_addr_type addr, unsigned time, mem_fetch *mf);
   void fill(unsigned idx, unsigned time, mem_fetch *mf);
   void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask);
-  void fill(new_addr_type addr, unsigned time, mem_fetch *mf,address_type &evicted_index, address_type &evicted_tag);
-  void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask,address_type &evicted_index, address_type &evicted_tag);
+  void fill(new_addr_type addr, unsigned time, mem_fetch *mf,address_type &evicted_index, address_type &evicted_tag, address_type &hpc);
+  void fill(new_addr_type addr, unsigned time, mem_access_sector_mask_t mask, mem_fetch *mf,
+            address_type &evicted_index, address_type &evicted_tag, address_type &hpc );
 
   unsigned size() const { return m_config.get_num_lines(); }
   cache_block_t *get_block(unsigned idx) { return m_lines[idx]; }
@@ -1175,7 +1179,7 @@ class baseline_cache : public cache_t {
   /// Interface for response from lower memory level (model bandwidth
   /// restictions in caller)
   void fill(mem_fetch *mf, unsigned time);
-  void fill(mem_fetch *mf, unsigned time, address_type &evicted_index, address_type &evicted_tag); 
+  void fill(mem_fetch *mf, unsigned time, address_type &evicted_index, address_type &evicted_tag, address_type &hpc ); 
   /// Checks if mf is waiting to be filled by lower memory level
   bool waiting_for_fill(mem_fetch *mf);
   /// Are any (accepted) accesses that had to wait for memory now ready? (does
