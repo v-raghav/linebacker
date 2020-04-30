@@ -243,7 +243,7 @@ struct sector_cache_block : public cache_block_t {
   }
 
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
-                        unsigned time, mem_access_sector_mask_t sector_mask) {
+                        unsigned time, mem_access_sector_mask_t sector_mask, address_type new_hpc = 0) {
     allocate_line(tag, block_addr, time, sector_mask);
   }
 
