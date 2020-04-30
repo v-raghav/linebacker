@@ -3255,7 +3255,7 @@ void shader_core_ctx::cycle() {
     if(m_core->get_sid() == 0)
      m_lm->print_state();
     m_lm->update(1);
-    
+
   }
   m_stats->shader_cycles[m_sid]++;
   writeback();
@@ -4414,7 +4414,7 @@ void load_monitor::update(unsigned period_number){
 void load_monitor::print_state(){
      printf("Core 0 Stats for LM \n");
      for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-       printf("LM[%d] Hits : %u, Misses :%u , Valid: %u\n",i,m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, (int)m_lm_entry[i].valid.to_ulong()) );
+       printf("LM[%d] Hits : %u, Misses :%u , Valid: %u\n",i,m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, (int)m_lm_entry[i].valid.to_ulong() );
 
       }
 }
