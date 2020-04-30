@@ -520,13 +520,15 @@ void tag_array::fill(new_addr_type addr, unsigned time,
                      address_type &evicted_index, address_type &evicted_tag,address_type &hpc ) {
   // assert( m_config.m_alloc_policy == ON_FILL );
   unsigned idx;
+  address_type new_hpc;
   enum cache_request_status status = probe(addr, idx, mask,evicted_index, evicted_tag,hpc,false, mf);
   // assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented
   // redundant memory request
-  if (status == MISS)
-    address_type new_hpc = mf->get_pc() & (LOAD_MONITOR_ENTRIES-1);
+  if (status == MISS){
+    new_hpc = mf->get_pc() & (LOAD_MONITOR_ENTRIES-1);
     m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr), time,
                            mask, new_hpc);
+  }
   else if (status == SECTOR_MISS) {
     assert(m_config.m_cache_type == SECTOR);
     ((sector_cache_block *)m_lines[idx])->allocate_sector(time, mask);
