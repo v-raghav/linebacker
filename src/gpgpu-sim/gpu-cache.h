@@ -108,7 +108,7 @@ struct cache_block_t {
 
   virtual void allocate(new_addr_type tag, new_addr_type block_addr,
                         unsigned time,
-                        mem_access_sector_mask_t sector_mask, address_type new_hpc) = 0;
+                        mem_access_sector_mask_t sector_mask, address_type new_hpc = 0) = 0;
   virtual void fill(unsigned time, mem_access_sector_mask_t sector_mask) = 0;
 
   virtual bool is_invalid_line() = 0;
@@ -152,7 +152,7 @@ struct line_cache_block : public cache_block_t {
     m_readable = true;
   }
   void allocate(new_addr_type tag, new_addr_type block_addr, unsigned time,
-                mem_access_sector_mask_t sector_mask,address_type new_hpc) {
+                mem_access_sector_mask_t sector_mask,address_type new_hpc = 0) {
     m_tag = tag;
     m_hpc=new_hpc;
     m_block_addr = block_addr;

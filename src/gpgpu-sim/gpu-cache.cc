@@ -524,7 +524,7 @@ void tag_array::fill(new_addr_type addr, unsigned time,
   // assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented
   // redundant memory request
   if (status == MISS)
-    address_type new_hpc=mf->get_pc() & (LOAD_MONITOR_ENTRIES-1);
+    address_type new_hpc = mf->get_pc() & (LOAD_MONITOR_ENTRIES-1);
     m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr), time,
                            mask, new_hpc);
   else if (status == SECTOR_MISS) {
