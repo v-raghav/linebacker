@@ -4365,12 +4365,12 @@ void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst,
 }
 
 load_monitor::load_monitor() {
-  m_lm_entry.reserve(100);
+  m_lm_entry.reserve(LOAD_MONITOR_ENTRIES);
   init({0,0,0,0b00});
 }
 
 address_type load_monitor::get_hpc(address_type pc) {
-  return pc & 0x1F;
+  return pc & 0x3FF;
 }
 
 void load_monitor::init(load_monitor_entry entry_value) {

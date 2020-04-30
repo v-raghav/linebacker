@@ -2352,7 +2352,7 @@ class victim_tag_table {
 };
 
 ////////LOAD MONITOR///////
-#define LOAD_MONITOR_ENTRIES 32
+#define LOAD_MONITOR_ENTRIES 1024
 #define HIT_THRESHOLD 200
 struct load_monitor_entry {
 
