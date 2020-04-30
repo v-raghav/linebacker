@@ -1794,7 +1794,7 @@ void ldst_unit::L1_latency_queue_cycle() {
       vtt_hit=m_vtt->tag_check(mf_next->get_addr());
       lm_vtt_hit=vtt_hit;
 
-      if(!mf_next()->isatomic() || m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD ) {  // Don't mess with atomics
+      if(!mf_next->isatomic() || m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD ) {  // Don't mess with atomics
         vtt_hit = false;
       }
       enum cache_request_status status =
