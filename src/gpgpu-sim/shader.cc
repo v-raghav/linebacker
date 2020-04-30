@@ -1855,8 +1855,9 @@ void ldst_unit::L1_latency_queue_cycle() {
         l1_latency_queue[j][0] = NULL;
         //If miss check hit in VTT and update LM
       //  if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD && m_vtt->tag_check(mf_next->get_addr())) {
+        if(m_vtt->tag_check(mf_next->get_addr())) {
           m_lm->insert(mf_next->get_pc(),false);
-        //}
+        }
       }
      
         
