@@ -2404,19 +2404,7 @@ inst->space.get_type() != shared_space) { unsigned warp_id = inst->warp_id();
 */
 void ldst_unit::cycle() {
   writeback();
-  if( m_core->get_gpu()->gpu_sim_cycle() == MONITORING_PERIOD) {
-    if(m_core->get_sid() == 0)
-      m_lm->print_state();
-    m_lm->update(0);
-   
-  }
-  else if(m_gpu->gpu_sim_cycle() == MONITORING_PERIOD * NUM_PERIODS) {
-    m_vtt->flush();
-    if(m_core->get_sid() == 0)
-     m_lm->print_state();
-    m_lm->update(1);
-
-  }
+  
   m_operand_collector->step();
   for (unsigned stage = 0; (stage + 1) < m_pipeline_depth; stage++)
     if (m_pipeline_reg[stage]->empty() && !m_pipeline_reg[stage + 1]->empty())
@@ -3255,7 +3243,20 @@ void shader_core_config::set_pipeline_latency() {
 
 void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
-
+  
+  if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD) {
+    if(m_core->get_sid() == 0)
+      m_lm->print_state();
+    m_lm->update(0);
+   
+  }
+  else if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD * NUM_PERIODS) {
+    m_vtt->flush();
+    if(m_core->get_sid() == 0)
+     m_lm->print_state();
+    m_lm->update(1);
+    
+  }
   m_stats->shader_cycles[m_sid]++;
   writeback();
   execute();
@@ -4413,7 +4414,7 @@ void load_monitor::update(unsigned period_number){
 void load_monitor::print_state(){
      printf("Core 0 Stats for LM \n");
      for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-       printf("LM[%d] Hits : %u, Misses :%u , Valid: %s\n",i,m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, m_lm_entry[i].valid.to_string() );
+       printf("LM[%d] Hits : %u, Misses :%u , Valid: %u\n",i,m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, (int)m_lm_entry[i].valid.to_ulong()) );
 
       }
 }
