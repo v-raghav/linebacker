@@ -1841,11 +1841,11 @@ void ldst_unit::L1_latency_queue_cycle() {
 
         if (!write_sent) delete mf_next;
         //don't recount the vtt hits as cache hits
-        if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD && vtt_hit == false ) {
+       // if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD && vtt_hit == false ) {
 
            m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
 
-        }   
+       // }   
 
       } else if (status == RESERVATION_FAIL) {
         assert(!read_sent);
@@ -1854,9 +1854,9 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
         //If miss check hit in VTT and update LM
-        if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD && m_vtt->tag_check(mf_next->get_addr())) {
+      //  if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD && m_vtt->tag_check(mf_next->get_addr())) {
           m_lm->insert(mf_next->get_pc(),false);
-        }
+        //}
       }
      
         
@@ -4367,6 +4367,8 @@ void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst,
 load_monitor::load_monitor() {
   m_lm_entry.reserve(LOAD_MONITOR_ENTRIES);
   init({0,0,0,0b00});
+  total_hit_count=0;
+  total_miss_count=0;
 }
 
 address_type load_monitor::get_hpc(address_type pc) {
@@ -4382,20 +4384,21 @@ void load_monitor::insert(address_type pc, bool hit) {
   address_type hashed_pc= get_hpc(pc);
   if(!m_lm_entry[hashed_pc].PC)
     m_lm_entry[hashed_pc].PC = pc;
-  if(hit)
+  if(hit) {
     m_lm_entry[hashed_pc].hit_count++;
+    total_hit_count++;
+  } 
   else {
     m_lm_entry[hashed_pc].miss_count++;
+    total_miss_count++;
   } 
 }   
 
 void load_monitor::get_lm_sub_stats(struct linebacker_sub_stats &lss) {
- 
-  for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-    lss.lm_hits+=m_lm_entry[i].hit_count;
-    lss.lm_misses+=m_lm_entry[i].miss_count;
-  }
 
+    lss.lm_hits+=total_hit_count;
+    lss.lm_misses+=total_miss_count;
+  
 }
     
 struct load_monitor_entry load_monitor::get_entry(address_type pc){

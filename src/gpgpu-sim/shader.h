@@ -2364,6 +2364,8 @@ struct load_monitor_entry {
 };
 class load_monitor {
   public:
+  unsigned total_hit_count;
+  unsigned total_miss_count;
 
    load_monitor();
    void init(load_monitor_entry entry_value);
