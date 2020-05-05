@@ -1885,6 +1885,10 @@ enum cache_request_status data_cache::access(new_addr_type addr, mem_fetch *mf,
       m_tag_array->probe(block_addr, cache_index, mf, true);
   enum cache_request_status access_status =
       process_tag_probe(wr, probe_status, addr, cache_index, mf, time, events,vtt_hit);
+  //saumya    
+  if(probe_status!=HIT && vtt_hit==true){
+    probe_status=HIT;
+  } 
   m_stats.inc_stats(mf->get_access_type(),
                     m_stats.select_stats_status(probe_status, access_status));
   m_stats.inc_stats_pw(mf->get_access_type(), m_stats.select_stats_status(
