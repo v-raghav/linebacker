@@ -1790,9 +1790,9 @@ void ldst_unit::L1_latency_queue_cycle() {
       std::list<cache_event> events;
 
       bool vtt_hit = false;
-      bool lm_vtt_hit=false; // Use this for LM misses
-      vtt_hit=m_vtt->tag_check(mf_next->get_addr());
-      lm_vtt_hit=vtt_hit;
+      bool lm_vtt_hit = false; // Use this for LM misses
+      vtt_hit = m_vtt->tag_check(mf_next->get_addr());
+      lm_vtt_hit = vtt_hit;
 
       if(!mf_next->isatomic() || m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD ) {  // Don't mess with atomics
         vtt_hit = false;
@@ -1844,11 +1844,10 @@ void ldst_unit::L1_latency_queue_cycle() {
         }
 
         if (!write_sent) delete mf_next;
-        //don't recount the vtt hits as cache hits
+        
+       //don't recount the vtt hits as cache hits
        if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD) {
-
            m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
-
         }   
 
       } else if (status == RESERVATION_FAIL) {
@@ -2463,13 +2462,13 @@ void ldst_unit::cycle() {
             address_type evicted_tag= (unsigned)-1;
             address_type hpc=0;
             m_L1D->fill(mf, m_core->get_gpu()->gpu_sim_cycle +
-                                m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag,hpc);
+                                m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag, hpc);
             
             
             //Fill VTT
             if(evicted_index != (unsigned)-1)
             {
-              if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD) {
+              if(m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD) {
                 //chosen_way = m_vtt->get_way(evicted_index);
                 m_vtt->fill_tag(evicted_tag, evicted_index);
                 //chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
@@ -4479,11 +4478,12 @@ address_type victim_tag_table::get_way(address_type set_index, unsigned Nvp) {
   return (addr >> m_bo_bits) & (SETS-1);
 }
 
- void victim_tag_table::fill_tag(address_type evicted_tag, address_type set_index,unsigned Nvp) {
+ void victim_tag_table::fill_tag(address_type evicted_tag, address_type set_index, unsigned Nvp) {
   address_type tag = evicted_tag >> (m_idx_bits + m_bo_bits); //L1d evicted tag contains 32 bit tag
   unsigned way = get_way(set_index, Nvp);
   m_vtt_entry[set_index][way].valid = 1;
   m_vtt_entry[set_index][way].tag = tag;
+  printf("Incoming index: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",set_index, m_vtt_entry[set_index][way].tag, tag);
   //update_lru(set_index);
 }
 
@@ -4495,7 +4495,7 @@ bool victim_tag_table::tag_check(address_type addr, unsigned Nvp) {
    {
      if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
      { 
-       //printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",addr, m_vtt_entry[set_index][way].tag, tag);
+       printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",addr, m_vtt_entry[set_index][way].tag, tag);
        m_vtt_hits+=1;
        return true;
      }
