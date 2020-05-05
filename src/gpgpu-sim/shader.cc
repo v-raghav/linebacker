@@ -3257,7 +3257,7 @@ void shader_core_ctx::cycle() {
   
   if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD) {
     if(m_sid == 0) {
-      printf("After first period, sim time: %d, total time %d",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
+      printf("After first period, sim time: %d, total time %d\n",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
       m_load_monitor->print_state();
     }  
     m_load_monitor->update(0);
@@ -3266,7 +3266,7 @@ void shader_core_ctx::cycle() {
   else if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD * NUM_PERIODS) {
     m_vtt->flush();
     if(m_sid == 0) {
-     printf("After second period, sim time: %d, total time %d",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
+     printf("After second period, sim time: %d, total time %d\n",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
      m_load_monitor->print_state();
     } 
     m_load_monitor->update(1);
@@ -4510,4 +4510,6 @@ bool victim_tag_table::tag_check(address_type addr, unsigned Nvp) {
 
 void victim_tag_table::flush() {
    init({0,0b0});
+   m_vtt_accesses = 0;
+   m_vtt_hits = 0;
 }
