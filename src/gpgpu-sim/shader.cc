@@ -4385,7 +4385,7 @@ load_monitor::load_monitor() {
 }
 
 address_type load_monitor::get_hpc(address_type pc) {
-  return pc & 0x3FF;
+  return pc & 0x1F;
 }
 
 void load_monitor::init(load_monitor_entry entry_value) {
