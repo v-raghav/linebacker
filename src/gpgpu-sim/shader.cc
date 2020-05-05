@@ -3256,7 +3256,8 @@ void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
   
   if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD) {
-    if(m_sid == 0){
+    if(m_sid == 0) {
+      printf("After first period, sim time: %d, total time %d",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
       m_load_monitor->print_state();
     }  
     m_load_monitor->update(0);
@@ -3265,6 +3266,7 @@ void shader_core_ctx::cycle() {
   else if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD * NUM_PERIODS) {
     m_vtt->flush();
     if(m_sid == 0) {
+     printf("After second period, sim time: %d, total time %d",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
      m_load_monitor->print_state();
     } 
     m_load_monitor->update(1);
