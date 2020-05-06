@@ -1799,7 +1799,7 @@ void ldst_unit::L1_latency_queue_cycle() {
         vtt_hit = false;
       }
       if(vtt_hit){
-       printf("apna time: %d\n",m_core->get_gpu()->gpu_sim_cycle );
+      // printf("apna time: %d\n",m_core->get_gpu()->gpu_sim_cycle );
       }
      
       enum cache_request_status status =
@@ -2481,9 +2481,9 @@ void ldst_unit::cycle() {
 
               }
               else {
-                if(m_lm->check_locality(hpc)) {
+              // if(m_lm->check_locality(hpc)) {
                    m_vtt->fill_tag(evicted_tag, evicted_index);
-                }
+               // }
               }
             }
             
