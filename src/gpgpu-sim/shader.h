@@ -2320,7 +2320,7 @@ struct linebacker_sub_stats {
 
 /////// Victim Tag table///////
 #define N_VP 8 //number of VTT partitions
-#define WAYS 99999999 //4 way associative
+#define WAYS 5000 //4 way associative
 #define SETS 48 //total number of sets
 #define BLOCK_SIZE 128 //cache line size
 
