@@ -1791,12 +1791,17 @@ void ldst_unit::L1_latency_queue_cycle() {
 
       bool vtt_hit = false;
       bool lm_vtt_hit = false; // Use this for LM misses
+
       vtt_hit = m_vtt->tag_check(mf_next->get_addr());
       lm_vtt_hit = vtt_hit;
 
       if(!mf_next->isatomic() || m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD ) {  // Don't mess with atomics
         vtt_hit = false;
       }
+      if(vtt_hit){
+       printf("apna time: %d\n",m_core->get_gpu()->gpu_sim_cycle );
+      }
+     
       enum cache_request_status status =
           m_L1D->access(mf_next->get_addr(), mf_next,
                         m_core->get_gpu()->gpu_sim_cycle +
