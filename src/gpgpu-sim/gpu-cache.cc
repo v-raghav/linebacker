@@ -1886,6 +1886,7 @@ enum cache_request_status data_cache::access(new_addr_type addr, mem_fetch *mf,
   //saumya    
   if(probe_status!=HIT && vtt_hit==true){
     probe_status=HIT;
+    printf("Got a VTT HIT!\n");
   } 
   m_stats.inc_stats(mf->get_access_type(),
                     m_stats.select_stats_status(probe_status, access_status));
