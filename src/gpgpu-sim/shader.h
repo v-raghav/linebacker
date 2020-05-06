@@ -2353,7 +2353,7 @@ class victim_tag_table {
 
 ////////LOAD MONITOR///////
 #define LOAD_MONITOR_ENTRIES 32
-#define HIT_THRESHOLD 20
+#define HIT_THRESHOLD 0
 struct load_monitor_entry {
 
   address_type PC;
