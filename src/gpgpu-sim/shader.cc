@@ -4483,7 +4483,7 @@ address_type victim_tag_table::get_way(address_type set_index, unsigned Nvp) {
   unsigned way = get_way(set_index, Nvp);
   m_vtt_entry[set_index][way].valid = 1;
   m_vtt_entry[set_index][way].tag = tag;
-  printf("Incoming index: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",set_index, m_vtt_entry[set_index][way].tag, tag);
+  //printf("Incoming index: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",set_index, m_vtt_entry[set_index][way].tag, tag);
   //update_lru(set_index);
 }
 
@@ -4495,7 +4495,7 @@ bool victim_tag_table::tag_check(address_type addr, unsigned Nvp) {
    {
      if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
      { 
-       printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",addr, m_vtt_entry[set_index][way].tag, tag);
+       //printf("Incoming addr: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",addr, m_vtt_entry[set_index][way].tag, tag);
        m_vtt_hits+=1;
        return true;
      }
