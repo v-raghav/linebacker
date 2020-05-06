@@ -1828,6 +1828,7 @@ enum cache_request_status data_cache::process_tag_probe(
   } else {  // Read
     if(probe_status != HIT && vtt_hit == true ) {
       access_status=HIT;
+      printf("Got a VTT Hit for probe status = %d\n", probe_status);
     }
     else if (probe_status == HIT) {
       access_status =
