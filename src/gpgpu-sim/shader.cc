@@ -3268,7 +3268,7 @@ void shader_core_ctx::cycle() {
       //m_load_monitor->print_state();
       printf("hi\n");
     }  
-    m_load_monitor->update(0);
+    //m_load_monitor->update(0);
     printf("hello\n");
   }
   else if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD * NUM_PERIODS) {
