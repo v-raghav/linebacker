@@ -3265,11 +3265,11 @@ void shader_core_ctx::cycle() {
   if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD) {
     if(m_sid == 0) {
       printf("After first period, sim time: %d, total time %d\n",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
-      //m_load_monitor->print_state();
-      printf("hi\n");
+      m_load_monitor->print_state();
+     
     }  
-    //m_load_monitor->update(0);
-    printf("hello\n");
+    m_load_monitor->update(0);
+   
   }
   else if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD * NUM_PERIODS) {
     m_vtt->flush();
@@ -4440,7 +4440,7 @@ struct load_monitor_entry load_monitor::get_entry(address_type pc){
 void load_monitor::update(unsigned period_number){
   
     for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-      if (( m_lm_entry[i].hit_count/(m_lm_entry[i].miss_count+m_lm_entry[i].hit_count)) > HIT_THRESHOLD ) {
+      if (( m_lm_entry[i].hit_count/(m_lm_entry[i].miss_count+m_lm_entry[i].hit_count+1)) > HIT_THRESHOLD ) {
            m_lm_entry[i].valid.set(period_number);
       }
       m_lm_entry[i].hit_count=0;
