@@ -3261,7 +3261,7 @@ void shader_core_config::set_pipeline_latency() {
 
 void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
-  
+  printf("Sdfsf\n");
   if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD) {
     if(m_sid == 0) {
       printf("After first period, sim time: %d, total time %d\n",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
@@ -4439,7 +4439,7 @@ struct load_monitor_entry load_monitor::get_entry(address_type pc){
 void load_monitor::update(unsigned period_number){
   
     for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-      if ( m_lm_entry[i].hit_count/(m_lm_entry[i].miss_count+m_lm_entry[i].hit_count) > HIT_THRESHOLD ) {
+      if (() m_lm_entry[i].hit_count/(m_lm_entry[i].miss_count+m_lm_entry[i].hit_count)) > HIT_THRESHOLD ) {
            m_lm_entry[i].valid.set(period_number);
       }
       m_lm_entry[i].hit_count=0;
