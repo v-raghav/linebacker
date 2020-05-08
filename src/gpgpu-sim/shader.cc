@@ -2789,8 +2789,8 @@ void gpgpu_sim::linebacker_print_stats(FILE *fout) const {
   fprintf(fout, "\tKernel load monitor misses = %llu\n", total_lss.lm_misses);
   fprintf(fout, "\tTotal victim tag table accesses = %llu\n", total_lss.vtt_accesses);
   fprintf(fout, "\tKernel victim tag table hits = %llu\n", total_lss.vtt_hits);
-  fprintf(fout, "\tTotal victim tag table hits = %llu\n", total_lss.vtt_hits);
-  vtt_total_hits
+  fprintf(fout, "\tTotal victim tag table hits = %llu\n", total_lss.vtt_total_hits);
+  
 
 
 }
