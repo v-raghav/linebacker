@@ -4392,17 +4392,17 @@ load_monitor::load_monitor() {
 }
 
 address_type load_monitor::get_hpc(address_type pc) {
-  //return pc & (LOAD_MONITOR_ENTRIES - 1);
-   unsigned hashed_pc=0;
-    std::bitset<3> temp;
-    for(int i=0; i<5; i++) {
-        temp=pc & 0x7;
-        if(temp.count() & 1)
-            hashed_pc|=(1<<i);
+  return pc & (LOAD_MONITOR_ENTRIES - 1);
+  //  unsigned hashed_pc=0;
+  //   std::bitset<3> temp;
+  //   for(int i=0; i<5; i++) {
+  //       temp=pc & 0x7;
+  //       if(temp.count() & 1)
+  //           hashed_pc|=(1<<i);
        
-        pc>>=3;    
-    }
-    return hashed_pc;
+  //       pc>>=3;    
+  //   }
+  //   return hashed_pc;
 }
 
 void load_monitor::init(load_monitor_entry entry_value) {
