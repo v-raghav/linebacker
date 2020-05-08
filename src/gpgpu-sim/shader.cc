@@ -4526,3 +4526,15 @@ void victim_tag_table::flush() {
    m_vtt_hits = 0;
    
 }
+address_type get_hashed_pc(address_type address) {
+   unsigned hashed_pc=0;
+    std::bitset<3> temp;
+    for(int i=0; i<5; i++) {
+        temp=address & 0x7;
+        if(temp.count() & 1)
+            hashed_pc|=(1<<i);
+       
+        address>>=3;    
+    }
+    return hashed_pc;
+}
