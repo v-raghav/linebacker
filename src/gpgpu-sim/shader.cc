@@ -4440,6 +4440,7 @@ void load_monitor::update(unsigned period_number){
   
     for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
       if (( m_lm_entry[i].hit_count/(m_lm_entry[i].miss_count+m_lm_entry[i].hit_count+1)) > HIT_THRESHOLD ) {
+           printf("yo\n");
            m_lm_entry[i].valid.set(period_number);
       }
       m_lm_entry[i].hit_count=0;
@@ -4448,7 +4449,7 @@ void load_monitor::update(unsigned period_number){
 }
 void load_monitor::print_state(){
      printf("Core 0 Stats for LM \n");
-     for(unsigned i=13; i<LOAD_MONITOR_ENTRIES; i++) {
+     for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
        printf("LM[%d] Hits : %u, Misses :%u , Valid: %u\n",i,m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, (int)m_lm_entry[i].valid.to_ulong() );
 
       }
