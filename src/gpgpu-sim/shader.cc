@@ -3266,10 +3266,10 @@ void shader_core_ctx::cycle() {
     if(m_sid == 0) {
       printf("After first period, sim time: %d, total time %d\n",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
       //m_load_monitor->print_state();
-      print("hi\n");
+      printf("hi\n");
     }  
     m_load_monitor->update(0);
-    print("hello\n");
+    printf("hello\n");
   }
   else if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD * NUM_PERIODS) {
     m_vtt->flush();
