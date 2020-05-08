@@ -4393,7 +4393,7 @@ load_monitor::load_monitor() {
 
 address_type load_monitor::get_hpc(address_type pc) {
   //return pc & (LOAD_MONITOR_ENTRIES - 1);
-  return get_hashed_pc(pc;)
+  return get_hashed_pc(pc);
 }
 
 void load_monitor::init(load_monitor_entry entry_value) {
