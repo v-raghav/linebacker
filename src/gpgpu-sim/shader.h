@@ -2281,7 +2281,7 @@ class perfect_memory_interface : public mem_fetch_interface {
   simt_core_cluster *m_cluster;
 };
 
-#define MONITORING_PERIOD 20000
+#define MONITORING_PERIOD 50000
 #define NUM_PERIODS 2
 inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
 //stats for various linebacker components
