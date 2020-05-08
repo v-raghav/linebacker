@@ -3261,7 +3261,7 @@ void shader_core_config::set_pipeline_latency() {
 
 void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
-  printf("Sdfsf\n");
+  printf("sejf\n");
   if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD) {
     if(m_sid == 0) {
       printf("After first period, sim time: %d, total time %d\n",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
