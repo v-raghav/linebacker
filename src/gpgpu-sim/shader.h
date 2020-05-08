@@ -2294,6 +2294,7 @@ struct linebacker_sub_stats {
   unsigned long long vtt_accesses;
   unsigned long long vtt_hits;
   unsigned long long vtt_misses;
+   unsigned long long vtt_total_hits;
 
   linebacker_sub_stats() { clear(); }
   void clear() {
@@ -2303,6 +2304,7 @@ struct linebacker_sub_stats {
     vtt_hits = 0;
     vtt_misses = 0;
     vtt_accesses=0;
+    vtt_total_hits=0;
   }
   linebacker_sub_stats &operator+=(const linebacker_sub_stats &lss) {
     ///
@@ -2314,13 +2316,14 @@ struct linebacker_sub_stats {
     vtt_hits += lss.vtt_hits;
     vtt_misses += lss.vtt_misses;
     vtt_accesses+= lss.vtt_accesses;
+    vtt_total_hits+=lss.vtt_total_hits;
     return *this;
   }
 };
 
 /////// Victim Tag table///////
 #define N_VP 8 //number of VTT partitions
-#define WAYS 5000 //4 way associative
+#define WAYS 8 //4 way associative
 #define SETS 48 //total number of sets
 #define BLOCK_SIZE 128 //cache line size
 
@@ -2339,6 +2342,7 @@ class victim_tag_table {
   unsigned m_idx_bits;
   unsigned m_vtt_hits;
   unsigned m_vtt_accesses;
+  unsigned m_total_vtt_hits;
   
   victim_tag_table();
   void init(tag_arr init_value);
@@ -2353,7 +2357,7 @@ class victim_tag_table {
 
 ////////LOAD MONITOR///////
 #define LOAD_MONITOR_ENTRIES 32
-#define HIT_THRESHOLD 150
+#define HIT_THRESHOLD 0.2
 struct load_monitor_entry {
 
   address_type PC;

@@ -1790,16 +1790,15 @@ void ldst_unit::L1_latency_queue_cycle() {
 
       bool vtt_hit = false;
       bool lm_vtt_hit = false; // Use this for LM misses
+      if (mf_next->get_inst().is_load()) {
+        vtt_hit = m_vtt->tag_check(mf_next->get_addr());
+        lm_vtt_hit = vtt_hit;
+      }  
 
-      vtt_hit = m_vtt->tag_check(mf_next->get_addr());
-      lm_vtt_hit = vtt_hit;
-
-      if(mf_next->isatomic() || m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD ) {  // Don't mess with atomics
+      if( m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD ) {  // Don't mess with atomics
         vtt_hit = false;
       }
-      if(vtt_hit){
-      // printf("apna time: %d\n",m_core->get_gpu()->gpu_sim_cycle );
-      }
+     
      
       enum cache_request_status status =
           m_L1D->access(mf_next->get_addr(), mf_next,
@@ -1849,7 +1848,7 @@ void ldst_unit::L1_latency_queue_cycle() {
 
         if (!write_sent) delete mf_next;
         
-       //don't recount the vtt hits as cache hits
+       //If hit in the cache then increment load_monitor hits
        if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD) {
            m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
         }   
@@ -1861,8 +1860,11 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
         //If miss check hit in VTT and update LM
-        if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD && lm_vtt_hit == true) {
-          m_lm->insert(mf_next->get_pc(),false);
+        if(m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD) {
+          if(lm_vtt_hit == true)
+            m_lm->insert(mf_next->get_pc(),true);
+          else
+            m_lm->insert(mf_next->get_pc(),false);  
         }
       }
      
@@ -2477,12 +2479,12 @@ void ldst_unit::cycle() {
                 m_vtt->fill_tag(evicted_tag, evicted_index);
                 //chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
                 //printf("Evicted_tag = %x, VTT[%lu][%lu] = %x\n", evicted_tag, evicted_index, chosen_way,chosen_tag);
-
               }
+              //only fill high locality loads after monitoring periods
               else {
-              // if(m_lm->check_locality(hpc)) {
+                if(m_lm->check_locality(hpc)) { 
                    m_vtt->fill_tag(evicted_tag, evicted_index);
-               // }
+                }
               }
             }
             
@@ -2783,10 +2785,12 @@ void gpgpu_sim::linebacker_print_stats(FILE *fout) const {
               i, lss.lm_hits, lss.lm_misses);
   }
   fprintf(fout, "Load Monitor:\n");
-  fprintf(fout, "\tTotal load monitor hits = %llu\n", total_lss.lm_hits);
-  fprintf(fout, "\tTotal load monitor misses = %llu\n", total_lss.lm_misses);
+  fprintf(fout, "\tKernel load monitor hits = %llu\n", total_lss.lm_hits);
+  fprintf(fout, "\tKernel load monitor misses = %llu\n", total_lss.lm_misses);
   fprintf(fout, "\tTotal victim tag table accesses = %llu\n", total_lss.vtt_accesses);
+  fprintf(fout, "\tKernel victim tag table hits = %llu\n", total_lss.vtt_hits);
   fprintf(fout, "\tTotal victim tag table hits = %llu\n", total_lss.vtt_hits);
+  vtt_total_hits
 
 
 }
@@ -4388,7 +4392,17 @@ load_monitor::load_monitor() {
 }
 
 address_type load_monitor::get_hpc(address_type pc) {
-  return pc & (LOAD_MONITOR_ENTRIES - 1);
+  //return pc & (LOAD_MONITOR_ENTRIES - 1);
+   unsigned hashed_pc=0;
+    std::bitset<3> temp;
+    for(int i=0; i<5; i++) {
+        temp=pc & 0x7;
+        if(temp.count() & 1)
+            hashed_pc|=(1<<i);
+       
+        pc>>=3;    
+    }
+    return hashed_pc;
 }
 
 void load_monitor::init(load_monitor_entry entry_value) {
@@ -4425,7 +4439,7 @@ struct load_monitor_entry load_monitor::get_entry(address_type pc){
 void load_monitor::update(unsigned period_number){
   
     for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-      if ( m_lm_entry[i].hit_count +  m_lm_entry[i].miss_count >= HIT_THRESHOLD ) {
+      if ( m_lm_entry[i].hit_count/(m_lm_entry[i].miss_count+m_lm_entry[i].hit_count) > HIT_THRESHOLD ) {
            m_lm_entry[i].valid.set(period_number);
       }
       m_lm_entry[i].hit_count=0;
@@ -4452,6 +4466,7 @@ victim_tag_table::victim_tag_table() {
   m_vtt_entry.reserve(SETS);
   m_vtt_hits = 0;
   m_vtt_accesses = 0;
+  m_total_vtt_hits=0;
   for(unsigned set = 0; set < SETS; set++)
     m_vtt_entry[set].resize(WAYS*N_VP);
   init({0,0b0});
@@ -4510,10 +4525,12 @@ bool victim_tag_table::tag_check(address_type addr, unsigned Nvp) {
  void victim_tag_table::get_vtt_sub_stats(struct linebacker_sub_stats &vss) {
    vss.vtt_accesses+=m_vtt_accesses;
    vss.vtt_hits+=m_vtt_hits;
+   vss.vtt_total_hits+=m_total_vtt_hits;
 }
 
 void victim_tag_table::flush() {
    init({0,0b0});
-   m_vtt_accesses = 0;
+   //m_vtt_accesses = 0;
    m_vtt_hits = 0;
+   m_total_vtt_hits+=m_vtt_hits;
 }
