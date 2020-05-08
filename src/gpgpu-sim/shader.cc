@@ -4439,7 +4439,7 @@ struct load_monitor_entry load_monitor::get_entry(address_type pc){
 void load_monitor::update(unsigned period_number){
   
     for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-      if (( m_lm_entry[i].hit_count/(m_lm_entry[i].miss_count+m_lm_entry[i].hit_count+1)) > HIT_THRESHOLD ) {
+      if (( (float)m_lm_entry[i].hit_count/(m_lm_entry[i].miss_count+m_lm_entry[i].hit_count+1)) > HIT_THRESHOLD ) {
            printf("yo\n");
            m_lm_entry[i].valid.set(period_number);
       }
