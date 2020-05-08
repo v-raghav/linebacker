@@ -4392,17 +4392,8 @@ load_monitor::load_monitor() {
 }
 
 address_type load_monitor::get_hpc(address_type pc) {
-  return pc & (LOAD_MONITOR_ENTRIES - 1);
-  //  unsigned hashed_pc=0;
-  //   std::bitset<3> temp;
-  //   for(int i=0; i<5; i++) {
-  //       temp=pc & 0x7;
-  //       if(temp.count() & 1)
-  //           hashed_pc|=(1<<i);
-       
-  //       pc>>=3;    
-  //   }
-  //   return hashed_pc;
+  //return pc & (LOAD_MONITOR_ENTRIES - 1);
+  return get_hashed_pc(pc;)
 }
 
 void load_monitor::init(load_monitor_entry entry_value) {
@@ -4531,6 +4522,7 @@ bool victim_tag_table::tag_check(address_type addr, unsigned Nvp) {
 void victim_tag_table::flush() {
    init({0,0b0});
    //m_vtt_accesses = 0;
-   m_vtt_hits = 0;
    m_total_vtt_hits+=m_vtt_hits;
+   m_vtt_hits = 0;
+   
 }
