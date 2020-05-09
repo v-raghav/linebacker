@@ -2281,7 +2281,7 @@ class perfect_memory_interface : public mem_fetch_interface {
   simt_core_cluster *m_cluster;
 };
 
-#define MONITORING_PERIOD 50000
+#define MONITORING_PERIOD 1500
 #define NUM_PERIODS 2
 inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
 //stats for various linebacker components
@@ -2323,7 +2323,7 @@ struct linebacker_sub_stats {
 
 /////// Victim Tag table///////
 #define N_VP 8 //number of VTT partitions
-#define WAYS 256 //4 way associative
+#define WAYS 4 //4 way associative
 #define SETS 48 //total number of sets
 #define BLOCK_SIZE 128 //cache line size
 
