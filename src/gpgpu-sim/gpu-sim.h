@@ -39,8 +39,7 @@
 #include "addrdec.h"
 #include "gpu-cache.h"
 #include "shader.h"
-unsigned gpu_vtt_assoc;
-unsigned gpu_monitoring_period;
+
 // constants for statistics printouts
 #define GPU_RSTAT_SHD_INFO 0x1
 #define GPU_RSTAT_BW_STAT 0x2

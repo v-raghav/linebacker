@@ -56,7 +56,6 @@
 #include "stack.h"
 #include "stats.h"
 #include "traffic_breakdown.h"
-#include "gpu-sim.h"
 
 #define NO_OP_FLAG 0xFF
 
@@ -2282,7 +2281,7 @@ class perfect_memory_interface : public mem_fetch_interface {
   simt_core_cluster *m_cluster;
 };
 
-#define MONITORING_PERIOD gpu_monitoring_period
+#define MONITORING_PERIOD 50000
 #define NUM_PERIODS 2
 inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
 //stats for various linebacker components
@@ -2324,7 +2323,7 @@ struct linebacker_sub_stats {
 
 /////// Victim Tag table///////
 #define N_VP 8 //number of VTT partitions
-#define WAYS gpu_vtt_assoc //4 way associative
+#define WAYS 256 //4 way associative
 #define SETS 48 //total number of sets
 #define BLOCK_SIZE 128 //cache line size
 
