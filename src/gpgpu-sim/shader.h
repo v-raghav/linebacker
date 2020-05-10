@@ -2281,7 +2281,8 @@ class perfect_memory_interface : public mem_fetch_interface {
   simt_core_cluster *m_cluster;
 };
 
-
+#define MONITORING_PERIOD 2000
+#define NUM_PERIODS 2
 inline int scheduler_unit::get_sid() const { return m_shader->get_sid(); }
 //stats for various linebacker components
 struct linebacker_sub_stats {
@@ -2293,6 +2294,7 @@ struct linebacker_sub_stats {
   unsigned long long vtt_accesses;
   unsigned long long vtt_hits;
   unsigned long long vtt_misses;
+   unsigned long long vtt_total_hits;
 
   linebacker_sub_stats() { clear(); }
   void clear() {
@@ -2302,6 +2304,7 @@ struct linebacker_sub_stats {
     vtt_hits = 0;
     vtt_misses = 0;
     vtt_accesses=0;
+    vtt_total_hits=0;
   }
   linebacker_sub_stats &operator+=(const linebacker_sub_stats &lss) {
     ///
@@ -2313,13 +2316,14 @@ struct linebacker_sub_stats {
     vtt_hits += lss.vtt_hits;
     vtt_misses += lss.vtt_misses;
     vtt_accesses+= lss.vtt_accesses;
+    vtt_total_hits+=lss.vtt_total_hits;
     return *this;
   }
 };
 
 /////// Victim Tag table///////
-#define N_VP 4 //number of VTT partitions
-#define WAYS 4 //4 way associative
+#define N_VP 8 //number of VTT partitions
+#define WAYS 256 //4 way associative
 #define SETS 48 //total number of sets
 #define BLOCK_SIZE 128 //cache line size
 
@@ -2338,19 +2342,22 @@ class victim_tag_table {
   unsigned m_idx_bits;
   unsigned m_vtt_hits;
   unsigned m_vtt_accesses;
+  unsigned m_total_vtt_hits;
   
   victim_tag_table();
   void init(tag_arr init_value);
-  address_type get_way(address_type set_index);
+  address_type get_way(address_type set_index,unsigned Nvp=1);
   address_type get_tag(address_type addr);
   address_type get_index(address_type addr);
-  void fill_tag(address_type evicted_tag, address_type set_index);
-  bool tag_check(address_type addr);
+  void fill_tag(address_type evicted_tag, address_type set_index,unsigned Nvp=1);
+  bool tag_check(address_type addr,unsigned Nvp=1);
   void get_vtt_sub_stats(struct linebacker_sub_stats &vss);
+  void flush();
 };
 
 ////////LOAD MONITOR///////
 #define LOAD_MONITOR_ENTRIES 32
+#define HIT_THRESHOLD 0.2
 struct load_monitor_entry {
 
   address_type PC;
@@ -2361,6 +2368,8 @@ struct load_monitor_entry {
 };
 class load_monitor {
   public:
+  unsigned total_hit_count;
+  unsigned total_miss_count;
 
    load_monitor();
    void init(load_monitor_entry entry_value);
@@ -2368,10 +2377,15 @@ class load_monitor {
    struct load_monitor_entry get_entry(address_type pc);
    void get_lm_sub_stats(struct linebacker_sub_stats &lss);
    address_type get_hpc(address_type pc);
+   void update(unsigned period_number);
+   void print_state();
+   bool check_locality(address_type hpc);
 
    private:
    std::vector<load_monitor_entry> m_lm_entry;
 
 };
+address_type get_hashed_pc(address_type address);
+
 
 #endif /* SHADER_H */

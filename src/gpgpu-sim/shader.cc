@@ -588,15 +588,14 @@ void shader_core_stats::print(FILE *fout) const {
       gpu_stall_shd_mem_breakdown[G_MEM_LD][COAL_STALL] +
           gpu_stall_shd_mem_breakdown[G_MEM_ST][COAL_STALL] +
           gpu_stall_shd_mem_breakdown[L_MEM_LD][COAL_STALL] +
-          gpu_stall_shd_mem_breakdown[L_MEM_ST]
-                                     [COAL_STALL]);  // coalescing stall + bank
+          gpu_stall_shd_mem_breakdown[L_MEM_ST][COAL_STALL]);  // coalescing stall + bank
                                                      // conflict at data cache
   fprintf(fout, "gpgpu_stall_shd_mem[gl_mem][data_port_stall] = %d\n",
           gpu_stall_shd_mem_breakdown[G_MEM_LD][DATA_PORT_STALL] +
               gpu_stall_shd_mem_breakdown[G_MEM_ST][DATA_PORT_STALL] +
               gpu_stall_shd_mem_breakdown[L_MEM_LD][DATA_PORT_STALL] +
-              gpu_stall_shd_mem_breakdown[L_MEM_ST]
-                                         [DATA_PORT_STALL]);  // data port stall
+              gpu_stall_shd_mem_breakdown[L_MEM_ST][DATA_PORT_STALL]); 
+               // data port stall
                                                               // at data cache
   // fprintf(fout, "gpgpu_stall_shd_mem[g_mem_ld][mshr_rc] = %d\n",
   // gpu_stall_shd_mem_breakdown[G_MEM_LD][MSHR_RC_FAIL]); fprintf(fout,
@@ -1788,14 +1787,31 @@ void ldst_unit::L1_latency_queue_cycle() {
     if ((l1_latency_queue[j][0]) != NULL) {
       mem_fetch *mf_next = l1_latency_queue[j][0];
       std::list<cache_event> events;
+
+      bool vtt_hit = false;
+      bool lm_vtt_hit = false; // Use this for LM misses
+      if (mf_next->get_inst().is_load()) {
+        vtt_hit = m_vtt->tag_check(mf_next->get_addr());
+        lm_vtt_hit = vtt_hit;
+      }  
+
+      if( m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD ) {  // Don't mess with atomics
+        vtt_hit = false;
+      }
+     
+     
       enum cache_request_status status =
           m_L1D->access(mf_next->get_addr(), mf_next,
                         m_core->get_gpu()->gpu_sim_cycle +
                             m_core->get_gpu()->gpu_tot_sim_cycle,
-                        events);
+                        events,vtt_hit);
         
       bool write_sent = was_write_sent(events);
       bool read_sent = was_read_sent(events);
+
+   
+
+     
 
       if (status == HIT) {
         assert(!read_sent);
@@ -1831,7 +1847,11 @@ void ldst_unit::L1_latency_queue_cycle() {
         }
 
         if (!write_sent) delete mf_next;
-        m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
+        
+       //If hit in the cache then increment load_monitor hits
+       if(m_core->get_gpu()->gpu_sim_cycle< NUM_PERIODS * MONITORING_PERIOD) {
+           m_lm->insert(mf_next->get_pc(),true); //Data cache is on-fill and does not count pending hits
+        }   
 
       } else if (status == RESERVATION_FAIL) {
         assert(!read_sent);
@@ -1840,8 +1860,11 @@ void ldst_unit::L1_latency_queue_cycle() {
         assert(status == MISS || status == HIT_RESERVED);
         l1_latency_queue[j][0] = NULL;
         //If miss check hit in VTT and update LM
-        if(m_vtt->tag_check(mf_next->get_addr())) {
-          m_lm->insert(mf_next->get_pc(),false);
+        if(m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD) {
+          if(lm_vtt_hit == true)
+            m_lm->insert(mf_next->get_pc(),true);
+          else
+            m_lm->insert(mf_next->get_pc(),false);  
         }
       }
      
@@ -2390,6 +2413,7 @@ inst->space.get_type() != shared_space) { unsigned warp_id = inst->warp_id();
 */
 void ldst_unit::cycle() {
   writeback();
+  
   m_operand_collector->step();
   for (unsigned stage = 0; (stage + 1) < m_pipeline_depth; stage++)
     if (m_pipeline_reg[stage]->empty() && !m_pipeline_reg[stage + 1]->empty())
@@ -2442,19 +2466,26 @@ void ldst_unit::cycle() {
           if (m_L1D->fill_port_free()) {
             address_type evicted_index=(unsigned)-1;
             address_type evicted_tag= (unsigned)-1;
-            address_type chosen_way = (unsigned)-1;
-            address_type chosen_tag;
+            address_type hpc=0;
             m_L1D->fill(mf, m_core->get_gpu()->gpu_sim_cycle +
-                                m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag);
+                                m_core->get_gpu()->gpu_tot_sim_cycle, evicted_index, evicted_tag, hpc);
             
             
             //Fill VTT
             if(evicted_index != (unsigned)-1)
             {
-              //chosen_way = m_vtt->get_way(evicted_index);
-              m_vtt->fill_tag(evicted_tag, evicted_index);
-              //chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
-              //printf("Evicted_tag = %x, VTT[%lu][%lu] = %x\n", evicted_tag, evicted_index, chosen_way,chosen_tag);
+              if(m_core->get_gpu()->gpu_sim_cycle < NUM_PERIODS * MONITORING_PERIOD) {
+                //chosen_way = m_vtt->get_way(evicted_index);
+                m_vtt->fill_tag(evicted_tag, evicted_index);
+                //chosen_tag = m_vtt->m_vtt_entry[evicted_index][chosen_way].tag;
+                //printf("Evicted_tag = %x, VTT[%lu][%lu] = %x\n", evicted_tag, evicted_index, chosen_way,chosen_tag);
+              }
+              //only fill high locality loads after monitoring periods
+              else {
+                if(m_lm->check_locality(hpc)) { 
+                   m_vtt->fill_tag(evicted_tag, evicted_index);
+                }
+              }
             }
             
             m_response_fifo.pop_front();
@@ -2754,10 +2785,12 @@ void gpgpu_sim::linebacker_print_stats(FILE *fout) const {
               i, lss.lm_hits, lss.lm_misses);
   }
   fprintf(fout, "Load Monitor:\n");
-  fprintf(fout, "\tTotal load monitor hits = %llu\n", total_lss.lm_hits);
-  fprintf(fout, "\tTotal load monitor misses = %llu\n", total_lss.lm_misses);
+  fprintf(fout, "\tKernel load monitor hits = %llu\n", total_lss.lm_hits);
+  fprintf(fout, "\tKernel load monitor misses = %llu\n", total_lss.lm_misses);
   fprintf(fout, "\tTotal victim tag table accesses = %llu\n", total_lss.vtt_accesses);
-  fprintf(fout, "\tTotal victim tag table hits = %llu\n", total_lss.vtt_hits);
+  fprintf(fout, "\tKernel victim tag table hits = %llu\n", total_lss.vtt_hits);
+  fprintf(fout, "\tTotal victim tag table hits = %llu\n", total_lss.vtt_total_hits);
+  
 
 
 }
@@ -3228,7 +3261,24 @@ void shader_core_config::set_pipeline_latency() {
 
 void shader_core_ctx::cycle() {
   if (!isactive() && get_not_completed() == 0) return;
+  if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD) {
+    if(m_sid == 0) {
+      printf("After first period, sim time: %d, total time %d\n",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
+      m_load_monitor->print_state();
+     
+    }  
+    m_load_monitor->update(0);
+   
+  }
+  else if(get_gpu()->gpu_sim_cycle == MONITORING_PERIOD * NUM_PERIODS) {
+    m_vtt->flush();
+    if(m_sid == 0) {
+     printf("After second period, sim time: %d, total time %d\n",get_gpu()->gpu_sim_cycle,get_gpu()->gpu_tot_sim_cycle);
+     m_load_monitor->print_state();
+    } 
+    m_load_monitor->update(1);
 
+  }
   m_stats->shader_cycles[m_sid]++;
   writeback();
   execute();
@@ -4335,12 +4385,15 @@ void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst,
 }
 
 load_monitor::load_monitor() {
-  m_lm_entry.reserve(100);
+  m_lm_entry.reserve(LOAD_MONITOR_ENTRIES);
   init({0,0,0,0b00});
+  total_hit_count=0;
+  total_miss_count=0;
 }
 
 address_type load_monitor::get_hpc(address_type pc) {
-  return pc & 0x1F;
+  //return pc & (LOAD_MONITOR_ENTRIES - 1);
+  return get_hashed_pc(pc);
 }
 
 void load_monitor::init(load_monitor_entry entry_value) {
@@ -4352,25 +4405,50 @@ void load_monitor::insert(address_type pc, bool hit) {
   address_type hashed_pc= get_hpc(pc);
   if(!m_lm_entry[hashed_pc].PC)
     m_lm_entry[hashed_pc].PC = pc;
-  if(hit)
+  if(hit) {
     m_lm_entry[hashed_pc].hit_count++;
+    total_hit_count++;
+  } 
   else {
     m_lm_entry[hashed_pc].miss_count++;
+    total_miss_count++;
   } 
 }   
 
 void load_monitor::get_lm_sub_stats(struct linebacker_sub_stats &lss) {
- 
-  for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
-    lss.lm_hits+=m_lm_entry[i].hit_count;
-    lss.lm_misses+=m_lm_entry[i].miss_count;
-  }
 
+    lss.lm_hits+=total_hit_count;
+    lss.lm_misses+=total_miss_count;
+  
 }
     
 struct load_monitor_entry load_monitor::get_entry(address_type pc){
   unsigned hashed_pc=get_hpc(pc);
   return m_lm_entry[hashed_pc];
+}
+
+void load_monitor::update(unsigned period_number){
+  
+    for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
+      if (( (float)m_lm_entry[i].hit_count/(m_lm_entry[i].miss_count+m_lm_entry[i].hit_count+1)) > HIT_THRESHOLD ) {
+           m_lm_entry[i].valid.set(period_number);
+      }
+      m_lm_entry[i].hit_count=0;
+      m_lm_entry[i].miss_count=0;
+    }  
+}
+void load_monitor::print_state(){
+     printf("Core 0 Stats for LM \n");
+     for(unsigned i=0; i<LOAD_MONITOR_ENTRIES; i++) {
+       printf("LM[%d] Hits : %u, Misses :%u , Valid: %u\n",i,m_lm_entry[i].hit_count, m_lm_entry[i].miss_count, (int)m_lm_entry[i].valid.to_ulong() );
+
+      }
+}
+bool load_monitor::check_locality(address_type hpc) {
+  if(m_lm_entry[hpc].valid == 0b11)
+    return true;
+  else
+    return false;    
 }
 
 victim_tag_table::victim_tag_table() {
@@ -4379,26 +4457,27 @@ victim_tag_table::victim_tag_table() {
   m_vtt_entry.reserve(SETS);
   m_vtt_hits = 0;
   m_vtt_accesses = 0;
+  m_total_vtt_hits=0;
   for(unsigned set = 0; set < SETS; set++)
-    m_vtt_entry[set].resize(WAYS);
+    m_vtt_entry[set].resize(WAYS*N_VP);
   init({0,0b0});
 }
 
 void victim_tag_table::init(tag_arr init_value) {
   for(unsigned set = 0; set < SETS; set++)
   {
-    for(unsigned way = 0; way < WAYS; way++)
+    for(unsigned way = 0; way < WAYS * N_VP; way++)
       m_vtt_entry[set][way] = init_value;
   }
 }
 
-address_type victim_tag_table::get_way(address_type set_index) { 
-  for (unsigned way = 0; way < WAYS; way++) {
+address_type victim_tag_table::get_way(address_type set_index, unsigned Nvp) { 
+  for (unsigned way = 0; way < WAYS * Nvp; way++) {
     if(m_vtt_entry[set_index][way].valid == 0)
       return way;
   }
   srand(time(0)); 
-  return (rand() % WAYS);
+  return (rand() % WAYS*Nvp);
 }
  
  address_type victim_tag_table::get_tag(address_type addr) {
@@ -4409,19 +4488,20 @@ address_type victim_tag_table::get_way(address_type set_index) {
   return (addr >> m_bo_bits) & (SETS-1);
 }
 
- void victim_tag_table::fill_tag(address_type evicted_tag, address_type set_index) {
+ void victim_tag_table::fill_tag(address_type evicted_tag, address_type set_index, unsigned Nvp) {
   address_type tag = evicted_tag >> (m_idx_bits + m_bo_bits); //L1d evicted tag contains 32 bit tag
-  unsigned way = get_way(set_index);
+  unsigned way = get_way(set_index, Nvp);
   m_vtt_entry[set_index][way].valid = 1;
   m_vtt_entry[set_index][way].tag = tag;
+  //printf("Incoming index: %x, VTT_entry.tag= %x, Incoming_tag = %x\n",set_index, m_vtt_entry[set_index][way].tag, tag);
   //update_lru(set_index);
 }
 
-bool victim_tag_table::tag_check(address_type addr) {
+bool victim_tag_table::tag_check(address_type addr, unsigned Nvp) {
    unsigned set_index = get_index(addr);
    address_type tag = get_tag(addr);
    m_vtt_accesses+=1;
-   for (unsigned way = 0; way < WAYS; way++) 
+   for (unsigned way = 0; way < WAYS * Nvp; way++) 
    {
      if(m_vtt_entry[set_index][way].valid == 1 && m_vtt_entry[set_index][way].tag == tag)
      { 
@@ -4436,4 +4516,25 @@ bool victim_tag_table::tag_check(address_type addr) {
  void victim_tag_table::get_vtt_sub_stats(struct linebacker_sub_stats &vss) {
    vss.vtt_accesses+=m_vtt_accesses;
    vss.vtt_hits+=m_vtt_hits;
+   vss.vtt_total_hits+=m_total_vtt_hits;
+}
+
+void victim_tag_table::flush() {
+   init({0,0b0});
+   //m_vtt_accesses = 0;
+   m_total_vtt_hits+=m_vtt_hits;
+   m_vtt_hits = 0;
+   
+}
+address_type get_hashed_pc(address_type address) {
+   unsigned hashed_pc=0;
+    std::bitset<3> temp;
+    for(int i=0; i<5; i++) {
+        temp=address & 0x7;
+        if(temp.count() & 1)
+            hashed_pc|=(1<<i);
+       
+        address>>=3;    
+    }
+    return hashed_pc;
 }

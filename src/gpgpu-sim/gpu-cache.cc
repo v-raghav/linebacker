@@ -30,6 +30,7 @@
 #include <assert.h>
 #include "gpu-sim.h"
 #include "stat-tool.h"
+#include "shader.h"
 
 // used to allocate memory that is large enough to adapt the changes in cache
 // size across kernels
@@ -338,7 +339,7 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
 //Overloaded
 enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
                                            mem_access_sector_mask_t mask,
-                                           address_type &evicted_index, address_type &evicted_tag,
+                                           address_type &evicted_index, address_type &evicted_tag, address_type &hpc,
                                            bool probe_mode,
                                            mem_fetch *mf) const {
   // assert( m_config.m_write_policy == READ_ONLY );
@@ -398,6 +399,7 @@ enum cache_request_status tag_array::probe(new_addr_type addr, unsigned &idx,
         }
         evicted_index=set_index;
         evicted_tag=line->m_tag;
+        hpc=line->m_hpc;
       }
     }
   }
@@ -507,20 +509,27 @@ void tag_array::fill(new_addr_type addr, unsigned time,
   m_lines[idx]->fill(time, mask);
 }
 //Overloaded
-void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf, address_type &evicted_index, address_type &evicted_tag) {
-  fill(addr, time, mf->get_access_sector_mask(), evicted_index, evicted_tag);
+void tag_array::fill(new_addr_type addr, unsigned time, mem_fetch *mf,
+                     address_type &evicted_index, address_type &evicted_tag,address_type &hpc) {
+                 
+  fill(addr, time, mf->get_access_sector_mask(),mf,  evicted_index, evicted_tag, hpc);
 }
 
 void tag_array::fill(new_addr_type addr, unsigned time,
-                     mem_access_sector_mask_t mask, address_type &evicted_index, address_type &evicted_tag) {
+                     mem_access_sector_mask_t mask, mem_fetch *mf,
+                     address_type &evicted_index, address_type &evicted_tag,address_type &hpc ) {
   // assert( m_config.m_alloc_policy == ON_FILL );
   unsigned idx;
-  enum cache_request_status status = probe(addr, idx, mask,evicted_index, evicted_tag);
+  address_type new_hpc;
+  enum cache_request_status status = probe(addr, idx, mask,evicted_index, evicted_tag,hpc,false, mf);
   // assert(status==MISS||status==SECTOR_MISS); // MSHR should have prevented
   // redundant memory request
-  if (status == MISS)
+  if (status == MISS){
+    //new_hpc = mf->get_pc() & (LOAD_MONITOR_ENTRIES-1);
+    new_hpc=get_hashed_pc(mf->get_pc());
     m_lines[idx]->allocate(m_config.tag(addr), m_config.block_addr(addr), time,
-                           mask);
+                           mask, new_hpc);
+  }
   else if (status == SECTOR_MISS) {
     assert(m_config.m_cache_type == SECTOR);
     ((sector_cache_block *)m_lines[idx])->allocate_sector(time, mask);
@@ -1198,7 +1207,8 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time) {
 }
 
 
-void baseline_cache::fill(mem_fetch *mf, unsigned time, address_type &evicted_index, address_type &evicted_tag) {
+void baseline_cache::fill(mem_fetch *mf, unsigned time, address_type &evicted_index,
+                           address_type &evicted_tag, address_type &hpc) {
   if (m_config.m_mshr_type == SECTOR_ASSOC) {
     assert(mf->get_original_mf());
     extra_mf_fields_lookup::iterator e =
@@ -1225,7 +1235,7 @@ void baseline_cache::fill(mem_fetch *mf, unsigned time, address_type &evicted_in
   if (m_config.m_alloc_policy == ON_MISS)
     m_tag_array->fill(e->second.m_cache_index, time, mf);
   else if (m_config.m_alloc_policy == ON_FILL) {
-    m_tag_array->fill(e->second.m_block_addr, time, mf,evicted_index,evicted_tag);
+    m_tag_array->fill(e->second.m_block_addr, time, mf,evicted_index,evicted_tag,hpc);
     if (m_config.is_streaming()) m_tag_array->remove_pending_line(mf);
   } else
     abort();
@@ -1792,7 +1802,51 @@ enum cache_request_status data_cache::process_tag_probe(
   m_bandwidth_management.use_data_port(mf, access_status, events);
   return access_status;
 }
+//Overloaded
+enum cache_request_status data_cache::process_tag_probe(
+    bool wr, enum cache_request_status probe_status, new_addr_type addr,
+    unsigned cache_index, mem_fetch *mf, unsigned time,
+    std::list<cache_event> &events, bool vtt_hit) {
+  // Each function pointer ( m_[rd/wr]_[hit/miss] ) is set in the
+  // data_cache constructor to reflect the corresponding cache configuration
+  // options. Function pointers were used to avoid many long conditional
+  // branches resulting from many cache configuration options.
+  cache_request_status access_status = probe_status;
+  if (wr) {  // Write
+    if (probe_status == HIT) {
+      access_status =
+          (this->*m_wr_hit)(addr, cache_index, mf, time, events, probe_status);
+    } else if ((probe_status != RESERVATION_FAIL) ||
+               (probe_status == RESERVATION_FAIL &&
+                m_config.m_write_alloc_policy == NO_WRITE_ALLOCATE)) {
+      access_status =
+          (this->*m_wr_miss)(addr, cache_index, mf, time, events, probe_status);
+    } else {
+      // the only reason for reservation fail here is LINE_ALLOC_FAIL (i.e all
+      // lines are reserved)
+      m_stats.inc_fail_stats(mf->get_access_type(), LINE_ALLOC_FAIL);
+    }
+  } else {  // Read
+    if(probe_status != HIT && vtt_hit == true ) {
+      access_status=HIT;
+     // printf("Got a VTT Hit for probe status = %d\n", probe_status);
+    }
+    else if (probe_status == HIT) {
+      access_status =
+          (this->*m_rd_hit)(addr, cache_index, mf, time, events, probe_status);
+    } else if (probe_status != RESERVATION_FAIL) {
+      access_status =
+          (this->*m_rd_miss)(addr, cache_index, mf, time, events, probe_status);
+    } else {
+      // the only reason for reservation fail here is LINE_ALLOC_FAIL (i.e all
+      // lines are reserved)
+      m_stats.inc_fail_stats(mf->get_access_type(), LINE_ALLOC_FAIL);
+    }
+  }
 
+  m_bandwidth_management.use_data_port(mf, access_status, events);
+  return access_status;
+}
 // Both the L1 and L2 currently use the same access function.
 // Differentiation between the two caches is done through configuration
 // of caching policies.
@@ -1818,6 +1872,30 @@ enum cache_request_status data_cache::access(new_addr_type addr, mem_fetch *mf,
                                                   probe_status, access_status));
   return access_status;
 }
+//Overloaded
+enum cache_request_status data_cache::access(new_addr_type addr, mem_fetch *mf,
+                                             unsigned time,
+                                             std::list<cache_event> &events, bool vtt_hit) {
+  assert(mf->get_data_size() <= m_config.get_atom_sz());
+  bool wr = mf->get_is_write();
+  new_addr_type block_addr = m_config.block_addr(addr);
+  
+  unsigned cache_index = (unsigned)-1;
+  enum cache_request_status probe_status =
+      m_tag_array->probe(block_addr, cache_index, mf, true);
+  enum cache_request_status access_status =
+      process_tag_probe(wr, probe_status, addr, cache_index, mf, time, events,vtt_hit);
+  //saumya    
+  if(probe_status!=HIT && vtt_hit==true){
+    probe_status=HIT;
+    //printf("Got a VTT HIT!\n");
+  } 
+  m_stats.inc_stats(mf->get_access_type(),
+                    m_stats.select_stats_status(probe_status, access_status));
+  m_stats.inc_stats_pw(mf->get_access_type(), m_stats.select_stats_status(
+                                                  probe_status, access_status));
+  return access_status;
+}
 
 /// This is meant to model the first level data cache in Fermi.
 /// It is write-evict (global) or write-back (local) at the
@@ -1827,6 +1905,12 @@ enum cache_request_status l1_cache::access(new_addr_type addr, mem_fetch *mf,
                                            unsigned time,
                                            std::list<cache_event> &events) {
   return data_cache::access(addr, mf, time, events);
+}
+//Overloaded
+enum cache_request_status l1_cache::access(new_addr_type addr, mem_fetch *mf,
+                                           unsigned time,
+                                           std::list<cache_event> &events, bool vtt_hit) {
+  return data_cache::access(addr, mf, time, events, vtt_hit);
 }
 
 // The l2 cache access function calls the base data_cache access
